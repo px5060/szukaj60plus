@@ -1,0 +1,25 @@
+{
+ "id": "t60-szukajplus-v1",
+ "name": "T60 SZUKAJ+ — modele STEP→[STEP2]→TRIGGER×n",
+ "short_name": "T60 SZUKAJ+",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "orientation": "portrait",
+ "background_color": "#12151c",
+ "theme_color": "#1b1f2a",
+ "icons": [
+  {
+   "src": "szukaj-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "szukaj-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  }
+ ]
+}
