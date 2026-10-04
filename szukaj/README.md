@@ -16,7 +16,7 @@ Appka = `../index.html` (repo osobne od RAZEM, własny adres).
   (STEP, TRIGGER, przed grą, krok i stawka, WIN / przegrana / BUST), najnowsze u góry.
 - **Import kodów** (zakładka SZUKAJ): plik eksportu z RAZEM lub jej tabel (.json z `codes`, pełny ciąg od Nr 1)
   albo plik tekstowy; kody muszą zgadzać się z ciągiem, dopisywane są tylko nowe.
-- **SZUKAJ** losuje kolejne 20 000 konfiguracji w telefonie i dopisuje te, które spełniają kryteria.
+- **Tylko pula z chmury**: szukanie w telefonie jest wyłączone (losowanie dawało różne modele na telefonie i PC). Pulę aktualizuje `search.py` na nowym ciągu (`dopisane.txt`), potem build i nowa wersja appki.
 
 ## Pula z chmury (duże przeszukanie)
 

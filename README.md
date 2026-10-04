@@ -11,7 +11,7 @@ Adres: **https://px5060.github.io/szukaj60plus/**
   64 / 128 / 256 zł, w grupach wg liczby cykli; modele ponad 400 cykli (złota obwódka) tylko gdy są na kroku gry.
 - **TABELA**: wybrany model naniesiony na ciąg kodów (STEP, TRIGGER, zakład, WIN / BUST) + statystyki
   (ostatni BUST, 2 BUST-y pod rząd, …) i przycisk **Gram ten model** → MOJE GRY (prowadzenie do WIN albo kroku 8).
-- **SZUKAJ**: kryteria, szukanie kolejnych modeli w telefonie, import kodów.
+- **SZUKAJ**: kryteria, stan puli z chmury, import kodów. Szukania w telefonie nie ma — modele są te same na każdym urządzeniu.
 
 ## Typy modeli
 
