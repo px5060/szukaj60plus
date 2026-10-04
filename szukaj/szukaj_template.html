@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#1b1f2a">
 <title>__TITLE__</title>
 <link rel="manifest" href="szukaj.webmanifest">
-<link rel="icon" href="szukaj-192.png">
-<link rel="apple-touch-icon" href="szukaj-192.png">
+<link rel="icon" href="szukajplus-192.png">
+<link rel="apple-touch-icon" href="szukajplus-192.png">
 <meta name="apple-mobile-web-app-title" content="__TITLE__">
 <style>
 :root{--bg:#12151c;--pan:#1b1f2a;--card:#242a38;--bd:#323a4d;--tx:#e8ebf2;--mu:#8b93a7;--or:#ff6600;--or2:#ff9a4d;--gr:#5fd38a;--rd:#ff8a8a;--bl:#9fc4ff}
@@ -286,7 +286,7 @@ onmessage = e => {
 const CFG = __CFG__;            // {app, seedKey, razem, targets:[...], defRules, minCyc}
 const MASTER_SEED = '__SEED__';
 const POOLS = __POOLS__;        // {x1x:{seedN,pool:[[typ,STEP,x,TRIG,off,tn,STEP2]...]}, ...}
-const APP_VER = '3.1.1';
+const APP_VER = '3.1.2';
 const SEED_N = MASTER_SEED.length / 3;
 const AL = CFG.alph, TPOS = { x1x: 1, xx1: 2, '1xx': 0 };
 const LSK = { my: CFG.app + '_szukajp_v1_moje_', bands: CFG.app + '_szukajp_v1_bands', imp: CFG.app + '_szukajp_v1_lastimp', found: CFG.app + '_szukajp_v1_found_', rules: CFG.app + '_szukajp_v1_rules', tgt: CFG.app + '_szukajp_v1_tgt', ks: CFG.app + '_szukajp_v1_ks' };

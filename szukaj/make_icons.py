@@ -9,5 +9,5 @@ for size in (192, 512):
     d.line([300*s, 262*s, 410*s, 372*s], fill='white', width=int(46*s))
     f = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', int(110*s))
     d.text((256*s, 440*s), lbl, font=f, fill='white', anchor='mm')
-    im.save(out / f'szukaj-{size}.png')
+    im.save(out / f'szukajplus-{size}.png')
 print('ikony zapisane', out)
