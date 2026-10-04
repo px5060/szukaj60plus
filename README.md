@@ -32,7 +32,7 @@ W TABELI: STEP2 — fioletowa etykieta i ramka, TRIGGER n/tn — przerywana ramk
 index.html            appka (generowana — nie edytować ręcznie)
 szukaj.webmanifest    PWA (zakres ./)
 szukaj-sw.js          service worker: strona zawsze z sieci
-szukaj-192/512.png    ikony
+szukajplus-192/512.png  ikony (fioletowe, 50+/60+)
 szukaj/               narzędzia: silnik, szukanie puli, budowanie (szukaj/README.md)
 ```
 

@@ -34,7 +34,7 @@ def main():
     man = {'id': a['mid'], 'name': a['title'] + ' — modele STEP→[STEP2]→TRIGGER×n', 'short_name': a['title'],
            'start_url': './', 'scope': './', 'display': 'standalone', 'orientation': 'portrait',
            'background_color': '#12151c', 'theme_color': '#1b1f2a',
-           'icons': [{'src': f'szukaj-{n}.png', 'sizes': f'{n}x{n}', 'type': 'image/png', 'purpose': 'any'} for n in (192, 512)]}
+           'icons': [{'src': f'szukajplus-{n}.png', 'sizes': f'{n}x{n}', 'type': 'image/png', 'purpose': 'any'} for n in (192, 512)]}
     # SW: nawigacje zawsze z sieci (bez starej wersji z pamięci)
     (HERE.parent / 'szukaj-sw.js').write_text(
         "// SZUKAJ: nawigacje zawsze z sieci (bez starej wersji z pamięci)\n"
