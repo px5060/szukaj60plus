@@ -288,7 +288,7 @@ onmessage = e => {
 const CFG = __CFG__;            // {app, seedKey, razem, targets:[...], defRules, minCyc}
 const MASTER_SEED = '__SEED__';
 const POOLS = __POOLS__;        // {x1x:{seedN,pool:[[typ,STEP,x,TRIG,off,tn,STEP2]...]}, ...}
-const APP_VER = '3.1.2';
+const APP_VER = '3.2.0';
 const SEED_N = MASTER_SEED.length / 3;
 const AL = CFG.alph, TPOS = { x1x: 1, xx1: 2, '1xx': 0 };
 const LSK = { my: CFG.app + '_szukajp_v1_moje_', bands: CFG.app + '_szukajp_v1_bands', imp: CFG.app + '_szukajp_v1_lastimp', found: CFG.app + '_szukajp_v1_found_', rules: CFG.app + '_szukajp_v1_rules', tgt: CFG.app + '_szukajp_v1_tgt', ks: CFG.app + '_szukajp_v1_ks' };
@@ -350,9 +350,11 @@ function renderSheet() {
       ? `<button class="btn playing" id="spStop">${res ? (res.win ? '✔ WIN' : '✖ BUST') + ` — gra zakończona (${res.pnl >= 0 ? '+' : ''}${res.pnl} zł). Usuń z MOJE GRY` : `■ W MOJE GRY od w.${g.start + 1} (wejście k${g.s0}) — przestań śledzić`}</button>`
       : `<button class="btn play" id="spPlay">▶ Gram ten model — dodaj do MOJE GRY (teraz krok ${r.bs + 1}, ${ST[r.bs]} zł)</button><div class="hint" style="margin-top:4px">Model zostanie w MOJE GRY na górze ekranu GRA do WIN albo kroku 8, niezależnie od kryteriów i filtrów.</div>`}
     ${ready ? statsHtml(r) : '<div class="hint" style="margin-top:10px">Liczę statystyki…</div>'}
+    ${r ? rzBtn(k) : ''}
     <button class="btn more" id="spTab" style="margin-top:10px">Otwórz TABELĘ tego modelu</button><button class="btn more" id="spClose" style="margin-top:6px">✕ Zamknij</button></div>`;
   $('spX').onclick = closeStats; $('spClose').onclick = closeStats;
   $('spTab').onclick = () => { closeStats(); openTab(k); };
+  const rz = $('spRz'); if (rz) rz.onclick = () => { rzToggle(k); renderSheet(); };
   const p = $('spPlay'); if (p) p.onclick = () => { startMy(k); renderSheet(); };
   const s = $('spStop'); if (s) s.onclick = () => { if (confirm('Usunąć z MOJE GRY?')) { stopMy(specKey(m)); renderSheet(); } };
 }
@@ -382,6 +384,25 @@ function openTxt(m, r) {
   return r.st === 1 ? `STEP otwarty — czekam na STEP2 ${m[6]}` : `${m[6] ? 'STEP2 był' : 'STEP otwarty'} — czekam na TRIGGER${TN(m) > 1 ? ` ${r.tc + 1}/${TN(m)}` : ''}`;
 }
 function mid(k, m) { return (k < POOLS[tgt].pool.length ? 'P' : 'N') + (k < POOLS[tgt].pool.length ? k + 1 : k - POOLS[tgt].pool.length + 1); }
+
+// ---- ⇢ RAZEM: model do zakładki SZUKAJ w T50 / T60 RAZEM (wspólna pamięć, klucz <app>razem_v1_szk) ----
+const RZK = CFG.app + 'razem_v1_szk', RZ_SRC = 'SZUKAJ+';
+const rzNorm = m => [m[0], m[1], +m[2] || 1, m[3], +m[4] || 1, +m[5] || 1, m[6] || ''];
+const rzSpec = (m, t) => rzNorm(m).join('|') + '|' + t;
+function rzList() { try { const v = JSON.parse(lsGet(RZK, '[]')); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+function rzHas(k) { const s = rzSpec(P[k], tgt); return rzList().some(e => e && Array.isArray(e.m) && rzSpec(e.m, e.tgt) === s); }
+function rzToggle(k) {
+  const s = rzSpec(P[k], tgt), a = rzList();
+  if (rzHas(k)) { lsSet(RZK, JSON.stringify(a.filter(e => !(e && Array.isArray(e.m) && rzSpec(e.m, e.tgt) === s)))); toast(`${mid(k, P[k])} usunięty z ${CFG.razem}`); return; }
+  const orig = mid(k, P[k]);
+  a.push({ m: rzNorm(P[k]), tgt, id: `${RZ_SRC === 'SZUKAJ+' ? 'S+' : 'S'}·${CFG.targets.length > 1 ? tgt + '·' : ''}${orig}`, orig, src: RZ_SRC, t: Date.now(), start: codes.length });
+  if (lsSet(RZK, JSON.stringify(a))) toast(`${orig} dodany do ${CFG.razem} — zakładka SZUKAJ`); else alert('BŁĄD zapisu pamięci telefonu!');
+}
+function rzBtn(k) {
+  const on = rzHas(k);
+  return `<button class="btn more" id="spRz" style="margin-top:10px;${on ? 'border:1px solid #5fd38a;color:#5fd38a' : 'background:#7030A0;color:#fff;border:0'}">${on ? `✓ W ${CFG.razem} (zakładka SZUKAJ) — usuń stamtąd` : `⇢ Dodaj do ${CFG.razem} — zakładka SZUKAJ`}</button>` +
+    (on ? '' : `<div class="hint" style="margin-top:4px">Model trafi do ${CFG.razem} (zakładka SZUKAJ): liczony na wspólnym ciągu, karty na GRA, MOJE GRY i MOJE ZAKŁADY jak modele z innych tabel.</div>`);
+}
 
 // ---- worker ----
 const W = new Worker(URL.createObjectURL(new Blob([$('wsrc').textContent], { type: 'text/javascript' })));
