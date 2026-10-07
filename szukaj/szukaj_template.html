@@ -146,6 +146,7 @@ th{color:var(--mu);font-weight:600}
 .msel{width:100%;margin-top:4px;background:var(--card);border:1px solid var(--bd);color:var(--tx);border-radius:8px;padding:8px;font-size:14px}
 .mchips{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}.mchips .chip{padding:3px 9px;font-size:12px}
 .busy{color:var(--or2);font-size:12px;margin-left:6px}
+#main.vgra .mc.abust{border:5px solid transparent;border-radius:6px;border-image:repeating-linear-gradient(-45deg,#e10600 0 12px,#ffffff 12px 24px) 5}
 .aft{margin-top:5px;background:#3a1f24;border:1px solid #7a2e38;color:#ffc9cf;border-radius:7px;padding:5px 8px;font-size:12.5px;font-weight:700}
 .aft .s{display:block;font-weight:500;font-size:11.5px;color:#f3d6da;margin-top:2px}.aft b.pos{color:var(--gr)}.aft b.neg{color:var(--rd)}
 </style>
@@ -596,7 +597,7 @@ function card(k, m, r, kind) {
     st = `<div class="st p6">Krok ${step}/8 — jeszcze nie gram (gra od ${KS.length ? `${ST[Math.min(...KS) - 1]} zł, k${Math.min(...KS)}` : '— wybierz krok'})<span class="s">model: ${ph}</span></div>`;
   } else st = `<div class="st p6">Czekam na STEP${m[0] === 'S' ? ` (licznik ${r.cnt}/${m[2]})` : ''}</div>`;
   const k5t = r.k5 ? `z k5: ${r.k5} wejść → W ${r.k5w} · BUST ${r.k5b}` : 'z k5: brak wejść';
-  return `<div class="mc k${step}${isTop(r) ? ' ktop' : ''}" data-mk="${k}"><div class="h"><span class="id">${mid(k, m)}${isTop(r) ? ` <span class="top">★ ${topCyc()}+ cykli</span>` : ''}</span><span class="stk">krok ${step} · ${stake} zł</span></div>
+  return `<div class="mc k${step}${r.sinceB === 0 ? ' abust' : ''}${isTop(r) ? ' ktop' : ''}" data-mk="${k}"><div class="h"><span class="id">${mid(k, m)}${isTop(r) ? ` <span class="top">★ ${topCyc()}+ cykli</span>` : ''}</span><span class="stk">krok ${step} · ${stake} zł</span></div>
     <div class="rule">${esc(ruleTxt(m))}</div>${afterBustHtml(r)}${st}
     <div class="meta"><span>cykle ${cyc} · BUST ${r.nbu}/${lim === null ? '—' : lim} · <span class="${r.pnl >= 0 ? 'pos' : 'neg'}">${r.pnl >= 0 ? '+' : ''}${r.pnl} zł</span></span><span>${k5t}</span></div><div class="tapt">dotknij → TABELA · przytrzymaj → STATYSTYKI i „Gram ten model”</div></div>`;
 }
@@ -1015,6 +1016,7 @@ function renderUst() {
 function render() {
   $('hdrN').textContent = `Nr ${codes.length.toLocaleString('pl')} · BET ${tgt}`;
   const el = $('main');
+  el.classList.toggle('vgra', view === 'gra');   // GRA: modele po BUST-cie w biało-czerwonej ramce
   el.innerHTML = view === 'gra' ? renderGra() : view === 'tab' ? renderTab() : view === 'moje' ? renderMoje() : renderUst();
   const hm = $('hdrModel');   // opis modelu w nagłówku (TABELA / MOJE)
   if (hm) { const m = (view === 'tab' || view === 'moje') && selK !== null && P[selK] && !(view === 'moje' && !getMy().length) ? P[selK] : null;
