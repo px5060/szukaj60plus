@@ -292,7 +292,7 @@ onmessage = e => {
 const CFG = __CFG__;            // {app, seedKey, razem, targets:[...], defRules, minCyc}
 const MASTER_SEED = '__SEED__';
 const POOLS = __POOLS__;        // {x1x:{seedN,pool:[[typ,STEP,x,TRIG,off,tn,STEP2]...]}, ...}
-const APP_VER = '3.3.0';
+const APP_VER = '3.3.1';
 const SEED_N = MASTER_SEED.length / 3;
 const AL = CFG.alph, TPOS = { x1x: 1, xx1: 2, '1xx': 0 };
 const LSK = { my: CFG.app + '_szukajp_v1_moje_', bands: CFG.app + '_szukajp_v1_bands', imp: CFG.app + '_szukajp_v1_lastimp', found: CFG.app + '_szukajp_v1_found_', rules: CFG.app + '_szukajp_v1_rules', tgt: CFG.app + '_szukajp_v1_tgt', ks: CFG.app + '_szukajp_v1_ks' };
@@ -596,10 +596,9 @@ function card(k, m, r, kind) {
     const ph = r.ph === 2 ? `zakład k${step} na w.${r.wz + 1}` : r.ph === 1 ? openTxt(m, r) : `czekam na STEP`;
     st = `<div class="st p6">Krok ${step}/8 — jeszcze nie gram (gra od ${KS.length ? `${ST[Math.min(...KS) - 1]} zł, k${Math.min(...KS)}` : '— wybierz krok'})<span class="s">model: ${ph}</span></div>`;
   } else st = `<div class="st p6">Czekam na STEP${m[0] === 'S' ? ` (licznik ${r.cnt}/${m[2]})` : ''}</div>`;
-  const k5t = r.k5 ? `z k5: ${r.k5} wejść → W ${r.k5w} · BUST ${r.k5b}` : 'z k5: brak wejść';
   return `<div class="mc k${step}${r.sinceB === 0 ? ' abust' : ''}${isTop(r) ? ' ktop' : ''}" data-mk="${k}"><div class="h"><span class="id">${mid(k, m)}${isTop(r) ? ` <span class="top">★ ${topCyc()}+ cykli</span>` : ''}</span><span class="stk">krok ${step} · ${stake} zł</span></div>
     <div class="rule">${esc(ruleTxt(m))}</div>${afterBustHtml(r)}${st}
-    <div class="meta"><span>cykle ${cyc} · BUST ${r.nbu}/${lim === null ? '—' : lim} · <span class="${r.pnl >= 0 ? 'pos' : 'neg'}">${r.pnl >= 0 ? '+' : ''}${r.pnl} zł</span></span><span>${k5t}</span></div><div class="tapt">dotknij → TABELA · przytrzymaj → STATYSTYKI i „Gram ten model”</div></div>`;
+    <div class="meta"><span>cykle ${cyc} · BUST ${r.nbu}/${lim === null ? '—' : lim} · <span class="${r.pnl >= 0 ? 'pos' : 'neg'}">${r.pnl >= 0 ? '+' : ''}${r.pnl} zł</span></span></div><div class="tapt">dotknij → TABELA · przytrzymaj → STATYSTYKI i „Gram ten model”</div></div>`;
 }
 const ST = [8, 8, 16, 32, 64, 128, 256, 512];
 function limitFor(cyc) { for (const [mc, mb] of R.rules) if (mc === null || cyc <= mc) return mb; return null; }
@@ -901,7 +900,6 @@ function statsHtml(r) {
     ${row('BUST średnio co', `<b>${S.b ? Math.round(S.cyc / S.b) + ' cykli' : '—'}</b>`)}
     ${row('najdłuższa seria BUST pod rząd', `<b>${S.maxRun}</b>`)}
     ${row('najbliższe 2 BUST-y', `<b>${S.minGap === null ? '—' : 'co ' + S.minGap + (S.minGap === 1 ? ' cykl (pod rząd)' : S.minGap <= 4 ? ' cykle' : ' cykli')}</b>`)}
-    ${row('cykle, które doszły do k5 (64 zł)', `<b>${S.k5} → WIN ${S.k5w} · BUST ${S.b}${r && r.k5 > S.k5 ? ` · +1 w toku (teraz k${r.bs + 1})` : ''}</b>`)}
     ${row('WIN na krokach k1…k8', `<b>${S.wk.slice(1).join(' · ')}</b>`)}
     ${row('bilans modelu (K8 od k1)', `<b class="${r && r.pnl >= 0 ? 'ok' : 'bad'}">${r ? (r.pnl >= 0 ? '+' : '') + r.pnl + ' zł' : ''}</b>`)}
   </div><div class="hint" style="margin-top:6px">Ostatnie ${S.last.length} cykli (najnowszy z prawej):</div>
