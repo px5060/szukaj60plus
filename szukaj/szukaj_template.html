@@ -85,6 +85,8 @@ main{padding:10px 12px 90px;max-width:760px;margin:0 auto}
 nav{position:fixed;bottom:0;left:0;right:0;z-index:30;display:flex;background:var(--pan);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom)}
 nav button{flex:1;background:none;border:0;color:var(--mu);padding:12px 0;font-size:14px;font-weight:700}
 nav button.on{color:var(--or2)}
+nav button{position:relative}nav button b.soon{position:absolute;top:2px;left:4px;min-width:16px;height:16px;border-radius:8px;background:#FFD700;color:#000;font:700 10px/16px system-ui;padding:0 4px;border:1px solid #fff}
+nav button i.nb{position:absolute;top:2px;right:4px;min-width:16px;height:16px;border-radius:8px;background:#FF6600;color:#fff;font:700 10px/16px system-ui;font-style:normal;padding:0 4px;border:1px solid #fff}nav button.glow i.nb{background:#fff;color:#FF6600}
 nav button.glow{background:#FF6600;color:#fff;animation:mjg .8s ease-in-out infinite alternate}
 @keyframes mjg{from{box-shadow:inset 0 0 0 0 #ffffff00}to{box-shadow:inset 0 0 14px 3px #ffffffaa}}
 table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
@@ -292,7 +294,7 @@ onmessage = e => {
 const CFG = __CFG__;            // {app, seedKey, razem, targets:[...], defRules, minCyc}
 const MASTER_SEED = '__SEED__';
 const POOLS = __POOLS__;        // {x1x:{seedN,pool:[[typ,STEP,x,TRIG,off,tn,STEP2]...]}, ...}
-const APP_VER = '3.6.0';
+const APP_VER = '3.7.0';
 const SEED_N = MASTER_SEED.length / 3;
 const AL = CFG.alph, TPOS = { x1x: 1, xx1: 2, '1xx': 0 };
 const LSK = { my: CFG.app + '_szukajp_v1_moje_', bands: CFG.app + '_szukajp_v1_bands', imp: CFG.app + '_szukajp_v1_lastimp', found: CFG.app + '_szukajp_v1_found_', rules: CFG.app + '_szukajp_v1_rules', tgt: CFG.app + '_szukajp_v1_tgt', ks: CFG.app + '_szukajp_v1_ks' };
@@ -1030,7 +1032,10 @@ function render() {
   const nm = $('navMine'); if (nm) {   // MOJE: model z zakładem na następnym wierszu → przycisk świeci, dopóki nie wejdziesz w MOJE
     const nb = betsOnNextRow().filter(x => x.mine).length, sk = CFG.app + '_moje_seen_' + tgt;
     if (view === 'moje') lsSet(sk, String(codes.length));
-    nm.textContent = `MOJE · ${getMy().length}${nb ? ' ▼' + nb : ''}`;
+    // żółty znacznik: za ile wierszy GRA w moich modelach (zakład już ustawiony, nie na następnym wierszu); pomarańczowy: ile moich modeli gra na następnym wierszu
+    const n = codes.length, soon = !lastEval ? [] : [...new Set(getMy().map(g => ({ g, k: myIndex(g) })).filter(x => x.k >= 0).map(x => ({ g: x.g, r: lastEval.out[x.k] }))
+      .filter(x => x.r && !myResult(x.g, x.r) && x.r.ph === 2 && x.r.wz > n).map(x => x.r.wz + 1 - n))].sort((a, b) => a - b);
+    nm.innerHTML = `MOJE · ${getMy().length}${soon.length ? `<b class="soon">${soon.join(',')}</b>` : ''}${nb ? `<i class="nb">${nb}</i>` : ''}`;
     nm.classList.toggle('glow', nb > 0 && view !== 'moje' && lsGet(sk, '') !== String(codes.length));
   }
   if (view === 'moje') el.querySelectorAll('[data-mk]').forEach(bindCard);
