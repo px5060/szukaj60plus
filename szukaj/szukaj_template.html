@@ -196,7 +196,7 @@ function qual(cyc, bu, R) { if (cyc < R.minCyc) return false; const l = limitFor
 function sim(m, R) {
   const S = tab(m[1]), T = tab(m[3]), x = m[2], off = m[4], tn = m[5] || 1, S2 = m[6] ? tab(m[6]) : null;
   let st = 0, cnt = 0, tc = 0, bs = 0, i = 0, pnl = 0, nb = 0, nw = 0, nbu = 0, k5 = 0, k5w = 0, k5b = 0, srow = -1, wz = -1, ph = 0, le = -1, lt = 0, lk = 0;
-  let cyc = 0, lb = -1, lbr = -1, pb = 0, pw = 0;   // cykle po BUST-cie: pb = BUST od razu po BUST-cie, pw = WIN po BUST-cie
+  let cyc = 0, lb = -1, lbr = -1, pb = 0, pw = 0; const ab = [];   // cykle po BUST-cie: pb = BUST od razu po BUST-cie, pw = WIN po BUST-cie, ab = wynik cyklu po każdym BUST-cie (krok WIN, 0 = BUST)
   while (i < N) {
     if (st === 0) {
       if (hit(S, i)) { cnt++; if (cnt >= x) { st = S2 ? 1 : 2; srow = i; } } else cnt = 0;
@@ -208,14 +208,14 @@ function sim(m, R) {
       if (bp >= N) { ph = 2; wz = bp; break; }
       const w = Y[X[bp]] === 1;
       nb++; if (bs === 4) k5++;
-      if (w) { pnl += ST[bs] * 3 - CUM[bs]; nw++; if (bs >= 4) k5w++; le = bp; lt = 1; lk = bs + 1; bs = 0; if (lb >= 0 && lb === cyc - 1) pw++; cyc++; }
-      else if (bs === 7) { pnl -= CUM[7]; nbu++; k5b++; le = bp; lt = 2; lk = 8; bs = 0; if (lb >= 0 && lb === cyc - 1) pb++; lb = cyc; lbr = bp; cyc++; }
+      if (w) { pnl += ST[bs] * 3 - CUM[bs]; nw++; if (bs >= 4) k5w++; le = bp; lt = 1; lk = bs + 1; bs = 0; if (lb >= 0 && lb === cyc - 1) { pw++; ab.push(lk); } cyc++; }
+      else if (bs === 7) { pnl -= CUM[7]; nbu++; k5b++; le = bp; lt = 2; lk = 8; bs = 0; if (lb >= 0 && lb === cyc - 1) { pb++; ab.push(0); } lb = cyc; lbr = bp; cyc++; }
       else bs++;
       st = 0; cnt = 0; tc = 0; i = bp + 1;
     } else i++;
   }
   if (ph === 0 && st >= 1) ph = 1;
-  return { nb, nw, nbu, pnl, k5, k5w, k5b, bs, ph, srow, wz, cnt, st, tc, le, lt, lk, sinceB: lb >= 0 ? cyc - 1 - lb : -1, lbr, pb, pw };
+  return { nb, nw, nbu, pnl, k5, k5w, k5b, bs, ph, srow, wz, cnt, st, tc, le, lt, lk, sinceB: lb >= 0 ? cyc - 1 - lb : -1, lbr, pb, pw, ab };
 }
 // etykiety wierszy dla jednego modelu (TABELA): K = rodzaj, A = licznik/krok, B = wiersz zakładu / zysk, Q = model spełniał kryteria
 // K: 0 czekam na STEP · 1 czekam na TRIGGER (A = ile TRIGGERÓW już było) · 2 step n/x · 3 STEP · 4 TRIGGER (ostatni → zakład) · 5 przed grą
@@ -292,7 +292,7 @@ onmessage = e => {
 const CFG = __CFG__;            // {app, seedKey, razem, targets:[...], defRules, minCyc}
 const MASTER_SEED = '__SEED__';
 const POOLS = __POOLS__;        // {x1x:{seedN,pool:[[typ,STEP,x,TRIG,off,tn,STEP2]...]}, ...}
-const APP_VER = '3.5.0';
+const APP_VER = '3.6.0';
 const SEED_N = MASTER_SEED.length / 3;
 const AL = CFG.alph, TPOS = { x1x: 1, xx1: 2, '1xx': 0 };
 const LSK = { my: CFG.app + '_szukajp_v1_moje_', bands: CFG.app + '_szukajp_v1_bands', imp: CFG.app + '_szukajp_v1_lastimp', found: CFG.app + '_szukajp_v1_found_', rules: CFG.app + '_szukajp_v1_rules', tgt: CFG.app + '_szukajp_v1_tgt', ks: CFG.app + '_szukajp_v1_ks' };
@@ -576,7 +576,12 @@ function afterBustHtml(r) {
   const n = codes.length, ago = n - 1 - r.lbr, cyc = r.nw + r.nbu;
   return `<div class="aft">BUST w w.${r.lbr + 1} (${ago} ${ago === 1 ? 'wiersz' : ago % 10 >= 2 && ago % 10 <= 4 && (ago % 100 < 10 || ago % 100 >= 20) ? 'wiersze' : 'wierszy'} temu) → teraz cykl po BUST-cie, krok ${r.bs + 1}/8` +
     (r.nbu <= 1 ? `<span class="s">to pierwszy BUST tego modelu — brak historii cykli po BUST-cie</span></div>` :
-    `<span class="s">w historii po BUST-cie (${r.nbu - 1}×): WIN ${r.pw} · BUST od razu po BUST-cie <b class="${r.pb ? 'neg' : 'pos'}">${r.pb}</b> · BUST średnio co ~${Math.round(cyc / r.nbu)} cykli</span></div>`);
+    `<span class="s">w historii po BUST-cie (${r.nbu - 1}×): WIN ${r.pw} · BUST od razu po BUST-cie <b class="${r.pb ? 'neg' : 'pos'}">${r.pb}</b> · BUST średnio co ~${Math.round(cyc / r.nbu)} cykli</span>${abHtml(r)}</div>`);
+}
+// wyniki cykli po kolejnych BUST-ach (jak w SZUKAJ BUST): krok WIN albo BUST, najnowszy z prawej
+function abHtml(r) {
+  const a = r && r.ab ? r.ab : []; if (!a.length) return '';
+  return `<span class="s">po kolejnych BUST-ach (najnowszy z prawej): ${a.map(v => v ? `<b class="pos">W${v}</b>` : '<b class="neg">BUST</b>').join(' · ')}</span>`;
 }
 function card(k, m, r, kind) {
   const n = codes.length, step = r.bs + 1, stake = ST[r.bs], cyc = r.nw + r.nbu, lim = limitFor(cyc);
@@ -898,6 +903,7 @@ function statsHtml(r) {
     ${row('ostatni BUST', `${lb}`)}
     ${row('2 BUST-y pod rząd (BUST od razu po BUST-cie)', `${two}`)}
     ${row('cykl po BUST-cie skończył się WIN', `<b class="ok">${r ? r.pw : ''}</b>`)}
+    ${row('po BUST-cie WIN na kroku (po kolei)', `<b>${r && r.ab && r.ab.length ? r.ab.map(v => v ? String(v) : '<span class="bad">BUST</span>').join(', ') : '—'}</b>`)}
     ${row('BUST średnio co', `<b>${S.b ? Math.round(S.cyc / S.b) + ' cykli' : '—'}</b>`)}
     ${row('najdłuższa seria BUST pod rząd', `<b>${S.maxRun}</b>`)}
     ${row('najbliższe 2 BUST-y', `<b>${S.minGap === null ? '—' : 'co ' + S.minGap + (S.minGap === 1 ? ' cykl (pod rząd)' : S.minGap <= 4 ? ' cykle' : ' cykli')}</b>`)}
