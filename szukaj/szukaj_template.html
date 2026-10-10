@@ -312,7 +312,7 @@ onmessage = e => {
 const CFG = __CFG__;            // {app, seedKey, razem, targets:[...], defRules, minCyc}
 const MASTER_SEED = '__SEED__';
 const POOLS = __POOLS__;        // {x1x:{seedN,pool:[[typ,STEP,x,TRIG,off,tn,STEP2]...]}, ...}
-const APP_VER = '3.14.0';
+const APP_VER = '3.15.0';
 const SEED_N = MASTER_SEED.length / 3;
 const AL = CFG.alph, TPOS = { x1x: 1, xx1: 2, '1xx': 0 };
 const LSK = { my: CFG.app + '_szukajp_v1_moje_', bands: CFG.app + '_szukajp_v1_bands', imp: CFG.app + '_szukajp_v1_lastimp', found: CFG.app + '_szukajp_v1_found_', rules: CFG.app + '_szukajp_v1_rules', tgt: CFG.app + '_szukajp_v1_tgt', ks: CFG.app + '_szukajp_v1_ks' };
@@ -683,36 +683,42 @@ function bustsMy(out) {
   getMy().forEach(g => { const k = myIndex(g); if (k < 0 || !out[k] || !out[k].bl) return; out[k].bl.forEach(([row, c, nb]) => { if (row >= g.start) L.push({ k, row, c, nb, g }); }); });
   return L.sort((a, b) => b.row - a.row);
 }
-function bustsGra(out) {
+function bustsGra(out, all) {   // all = bez filtra „krok:” (liczniki przy krokach)
   const n = codes.length, L = [];
-  out.forEach((r, k) => { if (!r.bl) return; r.bl.forEach(([row, c, nb]) => { if (row >= n - bustWin && (bustWin === 20 || row < n - 20) && qual({ nw: c - nb, nbu: nb, cl: 0 }) && BANDS.includes(bandOf({ nw: c - nb, nbu: nb }))) L.push({ k, row, c, nb }); }); });
+  out.forEach((r, k) => { if (!r.bl || !(all || KS.includes(r.bs + 1))) return; r.bl.forEach(([row, c, nb]) => { if (row >= n - bustWin && (bustWin === 20 || row < n - 20) && qual({ nw: c - nb, nbu: nb, cl: 0 }) && BANDS.includes(bandOf({ nw: c - nb, nbu: nb }))) L.push({ k, row, c, nb }); }); });
   return L.sort((a, b) => b.row - a.row || a.k - b.k);
 }
-// „po BUST”: modele w kryteriach, w cyklu zaraz po BUST-cie, po TRIGGERZE (zakład ustawiony), dowolny krok, wg przedziału cykli
+// „po BUST”: modele w kryteriach, w cyklu zaraz po BUST-cie, po TRIGGERZE (zakład ustawiony), na krokach z filtra „krok:”, wg przedziału cykli
 const PBX = () => CFG.app + '_szukajp_v1_pbx_' + tgt;   // wyrzucone z „po BUST” (model + wiersz BUST-u: wraca przy kolejnym BUST-cie)
 function pbxGet() { try { const v = JSON.parse(lsGet(PBX(), '[]')); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
 const pbxKey = k => specKey(P[k]) + '@' + lastEval.out[k].lbr;
-function poBustAll(out) { const n = codes.length; return out.map((r, k) => k).filter(k => { const r = out[k]; return r && qual(r) && r.sinceB === 0 && r.ph === 2 && r.wz <= n + 2 && BANDS.includes(bandOf(r)); }); }   // GRA na następnym albo zakład za 2–3 wiersze
+function poBustAll(out, all) { const n = codes.length; return out.map((r, k) => k).filter(k => { const r = out[k]; return r && qual(r) && r.sinceB === 0 && r.ph === 2 && r.wz <= n + 2 && BANDS.includes(bandOf(r)) && (all || KS.includes(r.bs + 1)); }); }   // GRA na następnym albo zakład za 2–3 wiersze
 function poBust(out) { const x = new Set(pbxGet()); return poBustAll(out).filter(k => !x.has(pbxKey(k))); }
 function poBustHtml(out) {
   const n = codes.length, L = poBust(out);
   const g = L.filter(k => out[k].wz === n).sort((a, b) => out[b].bs - out[a].bs), z = L.filter(k => out[k].wz > n).sort((a, b) => out[a].wz - out[b].wz || out[b].bs - out[a].bs);
   const sec = (t, A, kind, empty) => `<div class="sec"><div class="sh"><b>${t}</b><span class="m">${A.length}</span></div>${A.length ? A.map(k => `<div class="pbw">${card(k, P[k], out[k], kind)}<button class="pbx" data-pbx="${esc(pbxKey(k))}" title="wyrzuć z „po BUST”">✕</button></div>`).join('') : `<div class="empty">${empty}</div>`}</div>`;
-  const hid = poBustAll(out).length - L.length;
-  return sec(`GRA na następnym wierszu (w.${n + 1})`, g, 'gra', 'teraz żaden model po BUST-cie nie gra na następnym wierszu')
-    + sec('Zakład ustawiony — za 2–3 wiersze', z, 'czeka', 'teraz żaden model po BUST-cie nie ma zakładu w ciągu 3 wierszy')
+  const hid = poBustAll(out).length - L.length, ks = ksTxt();
+  return sec(`GRA na następnym wierszu (w.${n + 1})`, g, 'gra', `teraz żaden model po BUST-cie nie gra na następnym wierszu na krokach ${ks}`)
+    + sec('Zakład ustawiony — za 2–3 wiersze', z, 'czeka', `teraz żaden model po BUST-cie nie ma zakładu w ciągu 3 wierszy na krokach ${ks}`)
     + (hid ? `<div class="flt"><span class="hint">wyrzucone: ${hid}</span><button class="chip" id="pbxBack">przywróć wyrzucone</button></div>` : '');
 }
+const ksTxt = () => KS.length ? KS.map(k => ST[k - 1]).join('/') + ' zł' : '— wybierz krok w „krok:”';
 function bustHtml(out, mode) {
   const n = codes.length, my = mode === 'my', L = my ? bustsMy(out) : bustsGra(out);
   const wW = d => d === 1 ? 'wiersz' : d % 10 >= 2 && d % 10 <= 4 && (d % 100 < 10 || d % 100 >= 20) ? 'wiersze' : 'wierszy';
   const one = BANDS.length === 1 ? bandShort(BANDS[0]) + ' cykli' : 'wszystkie przedziały cykli';
   let h = my ? `<div class="note"><b>moje · busty</b> — BUST-y (przegrany krok 8) moich modeli od dodania do MOJE, najnowsze u góry. Dotknij → TABELA na wierszu BUST-u.</div>`
-    : (bustWin === 0 ? `<div class="note"><b>BUST · po BUST</b> — modele w kryteriach, które są w cyklu zaraz po BUST-cie i grają na następnym wierszu albo mają zakład za 2–3 wiersze, na dowolnym kroku · <b>${one}</b>. ✕ = wyrzuć z listy (wróci przy kolejnym BUST-cie). Dotknij kartę → TABELA, przytrzymaj → statystyki. „BUST” jeszcze raz = powrót.</div>`
-      : `<div class="note"><b>BUST</b> — modele proponowane do gry (przed BUST-em spełniały kryteria) i przegrały krok 8 · <b>${one}</b>. Dotknij → TABELA na wierszu BUST-u. „BUST” jeszcze raz = powrót.</div>`) + `
+    : (bustWin === 0 ? `<div class="note"><b>BUST · po BUST</b> — modele w kryteriach, które są w cyklu zaraz po BUST-cie i grają na następnym wierszu albo mają zakład za 2–3 wiersze, na krokach <b>${ksTxt()}</b> (filtr „krok:” — liczby przy krokach = modele po BUST-cie na danym kroku) · <b>${one}</b>. ✕ = wyrzuć z listy (wróci przy kolejnym BUST-cie). Dotknij kartę → TABELA, przytrzymaj → statystyki. „BUST” jeszcze raz = powrót.</div>`
+      : `<div class="note"><b>BUST</b> — modele proponowane do gry (przed BUST-em spełniały kryteria) i przegrały krok 8, teraz na krokach <b>${ksTxt()}</b> (filtr „krok:” — liczby przy krokach = modele z BUST-em na danym kroku) · <b>${one}</b>. Dotknij → TABELA na wierszu BUST-u. „BUST” jeszcze raz = powrót.</div>`) + `
       <div class="flt"><span>okres:</span>${[[20, 'ostatnie 20 w.'], [40, '21–40 w. wstecz'], [0, 'po BUST']].map(([w, t]) => `<button class="chip ${bustWin === w ? 'on' : ''}" data-bw="${w}">${t}</button>`).join('')}</div>`;
+  if (!my) {   // ile modeli z tej listy chowa filtr „krok:” (zaraz po BUST-cie model zaczyna od 8 zł — k1–k2, poza filtrem)
+    const x = new Set(pbxGet()), all = bustWin === 0 ? poBustAll(out, true).filter(k => !x.has(pbxKey(k))) : [...new Set(bustsGra(out, true).map(b => b.k))];
+    const vis = new Set(bustWin === 0 ? poBust(out) : L.map(b => b.k)), hid = all.filter(k => !vis.has(k)), h8 = hid.filter(k => out[k].bs < 2).length, h512 = hid.filter(k => out[k].bs === 7).length;
+    if (hid.length) h += `<div class="hint" style="margin:0 2px 6px">filtr „krok:” ukrywa ${hid.length} ${hid.length === 1 ? 'model' : hid.length % 10 >= 2 && hid.length % 10 <= 4 && (hid.length % 100 < 10 || hid.length % 100 >= 20) ? 'modele' : 'modeli'} z tej listy${h8 ? ` · ${h8} na 8 zł (k1–k2, zaraz po BUST-cie)` : ''}${h512 ? ` · ${h512} na 512 zł (k8)` : ''}</div>`;
+  }
   if (!my && bustWin === 0) return h + poBustHtml(out);
-  if (!L.length) return h + `<div class="empty" style="padding:10px 4px">${my ? 'Żaden z moich modeli nie miał BUST-u od dodania.' : `Brak BUST-ów modeli z kryteriów w ${bustWin === 20 ? 'ostatnich 20 wierszach' : 'wierszach 21–40 od końca'}.`}</div>`;
+  if (!L.length) return h + `<div class="empty" style="padding:10px 4px">${my ? 'Żaden z moich modeli nie miał BUST-u od dodania.' : `Brak BUST-ów modeli z kryteriów w ${bustWin === 20 ? 'ostatnich 20 wierszach' : 'wierszach 21–40 od końca'}, które są teraz na krokach ${ksTxt()}.`}</div>`;
   const nm = new Set(L.map(x => x.k)).size;
   h += `<div class="hint" style="margin:0 2px 6px">${L.length} BUST-ów · ${nm} ${nm === 1 ? 'model' : 'modeli'}${my ? '' : bustWin === 20 ? ` · ostatnie 20 wierszy (w.${n - 19}–${n})` : ` · wiersze 21–40 od końca (w.${n - 39}–${n - 20})`}</div>`;
   h += L.slice(0, bustCap).map(x => {
@@ -730,6 +736,10 @@ function renderGra() {
   const out = lastEval.out, { B } = playLists();
   const perK = {}; KSTEPS.forEach(k => perK[k] = 0); let qn = 0;
   out.forEach((r, k) => { if (qual(r)) { qn++; const s = r.bs + 1; if (perK[s] !== undefined && r.ph === 2 && !isMine(k)) perK[s]++; } });   // liczniki = modele po TRIGGERZE
+  if (bustView === 'gra' && !onlyMine) {   // widok BUST: liczniki = modele z listy BUST na danym kroku
+    KSTEPS.forEach(k => perK[k] = 0); const x = new Set(pbxGet());
+    (bustWin === 0 ? poBustAll(out, true).filter(k => !x.has(pbxKey(k))) : [...new Set(bustsGra(out, true).map(b => b.k))]).forEach(k => { const s = out[k].bs + 1; if (perK[s] !== undefined) perK[s]++; });
+  }
   const my = getMy().map(g => ({ g, k: myIndex(g) })).filter(x => x.k >= 0);
   const myOn = my.filter(x => !myResult(x.g, out[x.k]));
   const graAll = (onlyMine ? [] : [].concat(...B.filter((_, i) => BANDS.includes(i))).filter(k => phaseOf(out[k]) === 'gra'))
