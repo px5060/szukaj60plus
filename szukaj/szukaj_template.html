@@ -309,7 +309,7 @@ onmessage = e => {
 const CFG = __CFG__;            // {app, seedKey, razem, targets:[...], defRules, minCyc}
 const MASTER_SEED = '__SEED__';
 const POOLS = __POOLS__;        // {x1x:{seedN,pool:[[typ,STEP,x,TRIG,off,tn,STEP2]...]}, ...}
-const APP_VER = '3.10.0';
+const APP_VER = '3.10.1';
 const SEED_N = MASTER_SEED.length / 3;
 const AL = CFG.alph, TPOS = { x1x: 1, xx1: 2, '1xx': 0 };
 const LSK = { my: CFG.app + '_szukajp_v1_moje_', bands: CFG.app + '_szukajp_v1_bands', imp: CFG.app + '_szukajp_v1_lastimp', found: CFG.app + '_szukajp_v1_found_', rules: CFG.app + '_szukajp_v1_rules', tgt: CFG.app + '_szukajp_v1_tgt', ks: CFG.app + '_szukajp_v1_ks' };
@@ -575,7 +575,7 @@ window.addEventListener('storage', e => { if (e.key === CFG.seedKey) syncFromRaz
 
 // ---- widoki ----
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
-  view = b.dataset.v; if (view === 'moje' || view === 'tab') { tabScroll = true; hlBet = -1; liveOn = false; } document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b)); render(); scrollTo(0, 0);
+  view = b.dataset.v; if (view === 'moje' || view === 'tab') { tabScroll = view === 'tab'; hlBet = -1; liveOn = false; } /* MOJE: zostań u góry (karty MOJE GRY), bez przewijania na koniec tabeli */ document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b)); render(); scrollTo(0, 0);
 });
 function renderTgt() {
   $('tgt').innerHTML = CFG.targets.length < 2 ? '' : CFG.targets.map(t => `<button class="chip ${t === tgt ? 'on' : ''}" data-t="${t}">BET ${t}</button>`).join('');
