@@ -13,7 +13,7 @@ Adres: **https://px5060.github.io/szukaj60plus/**
   (ostatni BUST, 2 BUST-y pod rząd, …) i przycisk **Gram ten model** → MOJE GRY (prowadzenie do WIN albo kroku 8).
 - **SZUKAJ**: kryteria, stan puli z chmury, import kodów. Szukania w telefonie nie ma — modele są te same na każdym urządzeniu.
 - **⇢ do T60 RAZEM**: w oknie statystyk modelu (przytrzymaj kartę) przycisk „⇢ Dodaj do T60 RAZEM — zakładka SZUKAJ”: model trafia do tabeli SZUKAJ w T60 RAZEM (GRA, TABELA, STATY, MOJE GRY, MOJE ZAKŁADY). Ten sam przycisk usuwa.
-- **✖ BUST w MOJE / ✖ BUST z GRA** (GRA, wiersz „krok:”): BUST-y (przegrany krok 8) modeli z MOJE GRY od chwili dodania oraz wszystkich modeli, które przed BUST-em spełniały kryteria (były proponowane do gry), w ostatnich 20 / 50 / 200 wierszach; najnowsze u góry, dotknięcie → TABELA modelu na wierszu BUST-u.
+- **▶ moje → gry / busty** i **BUST** (wiersz „cykle:”): w „▶ moje” podzakładki „gry” (karty moich modeli) i „busty” (BUST-y moich modeli od dodania); przycisk BUST — modele, które przed BUST-em spełniały kryteria (proponowane do gry) i przegrały krok 8, okresy rozłączne: ostatnie 20 wierszy albo wiersze 21–40 od końca, wg wybranego przedziału cykli; dotknięcie → TABELA na wierszu BUST-u.
 
 ## Typy modeli
 
