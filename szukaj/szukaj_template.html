@@ -311,7 +311,7 @@ onmessage = e => {
 const CFG = __CFG__;            // {app, seedKey, razem, targets:[...], defRules, minCyc}
 const MASTER_SEED = '__SEED__';
 const POOLS = __POOLS__;        // {x1x:{seedN,pool:[[typ,STEP,x,TRIG,off,tn,STEP2]...]}, ...}
-const APP_VER = '3.12.0';
+const APP_VER = '3.13.0';
 const SEED_N = MASTER_SEED.length / 3;
 const AL = CFG.alph, TPOS = { x1x: 1, xx1: 2, '1xx': 0 };
 const LSK = { my: CFG.app + '_szukajp_v1_moje_', bands: CFG.app + '_szukajp_v1_bands', imp: CFG.app + '_szukajp_v1_lastimp', found: CFG.app + '_szukajp_v1_found_', rules: CFG.app + '_szukajp_v1_rules', tgt: CFG.app + '_szukajp_v1_tgt', ks: CFG.app + '_szukajp_v1_ks' };
@@ -336,8 +336,8 @@ const KSTEPS = [3, 4, 5, 6, 7];   // kroki do wyboru na GRA: 16 · 32 · 64 · 1
 let KS = (() => { try { const v = JSON.parse(lsGet(LSK.ks, '')); if (Array.isArray(v)) return v; } catch (e) {} return [5, 6, 7]; })();
 let view = 'gra', busy = false, searching = null, bandCap = {};
 let mojeTab = 'gry';   // ▶ moje: podzakładki „gry” (karty) i „busty” (BUST-y moich modeli)
-let bustView = '', bustWin = (() => { try { return +localStorage.getItem(CFG.app + '_szukajp_v1_bwin') || 20; } catch (e) { return 20; } })(), bustCap = 40;
-if (bustWin !== 20 && bustWin !== 40) bustWin = 20;   // GRA: BUST w MOJE / BUST z GRA
+let bustView = '', bustWin = (() => { try { const v = localStorage.getItem(CFG.app + '_szukajp_v1_bwin'); return v === null ? 20 : +v; } catch (e) { return 20; } })(), bustCap = 40;
+if (![20, 40, 0].includes(bustWin)) bustWin = 20;   // 20 = ostatnie 20 w. · 40 = 21–40 w. wstecz · 0 = po BUST   // GRA: BUST w MOJE / BUST z GRA
 let onlyMine = (() => { try { return localStorage.getItem(CFG.app + '_szukajp_v1_onlymine') === '1'; } catch (e) { return false; } })();   // GRA: tylko MOJE MODELE
 let BANDS = (() => { try { const v = JSON.parse(lsGet(LSK.bands, '')); if (Array.isArray(v)) return v; } catch (e) {} return R.rules.map((_, i) => i); })();
 function foundKey() { return LSK.found + tgt; }
@@ -687,13 +687,24 @@ function bustsGra(out) {
   out.forEach((r, k) => { if (!r.bl) return; r.bl.forEach(([row, c, nb]) => { if (row >= n - bustWin && (bustWin === 20 || row < n - 20) && qual({ nw: c - nb, nbu: nb, cl: 0 }) && BANDS.includes(bandOf({ nw: c - nb, nbu: nb }))) L.push({ k, row, c, nb }); }); });
   return L.sort((a, b) => b.row - a.row || a.k - b.k);
 }
+// „po BUST”: modele w kryteriach, w cyklu zaraz po BUST-cie, po TRIGGERZE (zakład ustawiony), dowolny krok, wg przedziału cykli
+function poBust(out) { return out.map((r, k) => k).filter(k => { const r = out[k]; return r && qual(r) && r.sinceB === 0 && r.ph === 2 && BANDS.includes(bandOf(r)); }); }
+function poBustHtml(out) {
+  const n = codes.length, L = poBust(out);
+  const g = L.filter(k => out[k].wz === n).sort((a, b) => out[b].bs - out[a].bs), z = L.filter(k => out[k].wz > n).sort((a, b) => out[a].wz - out[b].wz || out[b].bs - out[a].bs);
+  const sec = (t, A, kind, empty) => `<div class="sec"><div class="sh"><b>${t}</b><span class="m">${A.length}</span></div>${A.length ? A.map(k => card(k, P[k], out[k], kind)).join('') : `<div class="empty">${empty}</div>`}</div>`;
+  return sec(`GRA na następnym wierszu (w.${n + 1})`, g, 'gra', 'teraz żaden model po BUST-cie nie gra na następnym wierszu')
+    + sec('Zakład ustawiony — za ile wierszy', z, 'czeka', 'teraz żaden model po BUST-cie nie ma ustawionego zakładu');
+}
 function bustHtml(out, mode) {
   const n = codes.length, my = mode === 'my', L = my ? bustsMy(out) : bustsGra(out);
   const wW = d => d === 1 ? 'wiersz' : d % 10 >= 2 && d % 10 <= 4 && (d % 100 < 10 || d % 100 >= 20) ? 'wiersze' : 'wierszy';
   const one = BANDS.length === 1 ? bandShort(BANDS[0]) + ' cykli' : 'wszystkie przedziały cykli';
   let h = my ? `<div class="note"><b>moje · busty</b> — BUST-y (przegrany krok 8) moich modeli od dodania do MOJE, najnowsze u góry. Dotknij → TABELA na wierszu BUST-u.</div>`
-    : `<div class="note"><b>BUST</b> — modele proponowane do gry (przed BUST-em spełniały kryteria) i przegrały krok 8 · <b>${one}</b>. Dotknij → TABELA na wierszu BUST-u. „BUST” jeszcze raz = powrót.</div>
-      <div class="flt"><span>okres:</span>${[[20, 'ostatnie 20 w.'], [40, '21–40 w. wstecz']].map(([w, t]) => `<button class="chip ${bustWin === w ? 'on' : ''}" data-bw="${w}">${t}</button>`).join('')}</div>`;
+    : (bustWin === 0 ? `<div class="note"><b>BUST · po BUST</b> — modele w kryteriach, które są w cyklu zaraz po BUST-cie i mają już ustawiony zakład (po TRIGGERZE), na dowolnym kroku · <b>${one}</b>. Dotknij kartę → TABELA, przytrzymaj → statystyki. „BUST” jeszcze raz = powrót.</div>`
+      : `<div class="note"><b>BUST</b> — modele proponowane do gry (przed BUST-em spełniały kryteria) i przegrały krok 8 · <b>${one}</b>. Dotknij → TABELA na wierszu BUST-u. „BUST” jeszcze raz = powrót.</div>`) + `
+      <div class="flt"><span>okres:</span>${[[20, 'ostatnie 20 w.'], [40, '21–40 w. wstecz'], [0, 'po BUST']].map(([w, t]) => `<button class="chip ${bustWin === w ? 'on' : ''}" data-bw="${w}">${t}</button>`).join('')}</div>`;
+  if (!my && bustWin === 0) return h + poBustHtml(out);
   if (!L.length) return h + `<div class="empty" style="padding:10px 4px">${my ? 'Żaden z moich modeli nie miał BUST-u od dodania.' : `Brak BUST-ów modeli z kryteriów w ${bustWin === 20 ? 'ostatnich 20 wierszach' : 'wierszach 21–40 od końca'}.`}</div>`;
   const nm = new Set(L.map(x => x.k)).size;
   h += `<div class="hint" style="margin:0 2px 6px">${L.length} BUST-ów · ${nm} ${nm === 1 ? 'model' : 'modeli'}${my ? '' : bustWin === 20 ? ` · ostatnie 20 wierszy (w.${n - 19}–${n})` : ` · wiersze 21–40 od końca (w.${n - 39}–${n - 20})`}</div>`;
@@ -725,7 +736,7 @@ function renderGra() {
     `<button class="chip mine ${onlyMine ? 'on' : ''}" data-mine="1">▶ moje · ${my.length}</button></div>`;
   const shown = i => R.rules[i][0] !== null || B[i].length > 0;   // ★ 400+ tylko gdy model jest na kroku gry
   if (!onlyMine) { const allB = R.rules.length === BANDS.length && R.rules.every((_, i) => BANDS.includes(i)), one = !allB && BANDS.length === 1 ? BANDS[0] : -1;
-    h += `<div class="flt"><span>cykle:</span>${R.rules.map((_, i) => `<button class="chip ${i === one ? 'on' : ''}" data-b="${i}">${bandShort(i)} · ${B[i].length}</button>`).join('')}<button class="chip ${bustView === 'gra' ? 'on' : ''}" data-bv="gra">BUST · ${bustsGra(out).length}</button></div>`; }
+    h += `<div class="flt"><span>cykle:</span>${R.rules.map((_, i) => `<button class="chip ${i === one ? 'on' : ''}" data-b="${i}">${bandShort(i)} · ${B[i].length}</button>`).join('')}<button class="chip ${bustView === 'gra' ? 'on' : ''}" data-bv="gra">BUST · ${bustWin === 0 ? poBust(out).length : bustsGra(out).length}</button></div>`; }
   if (bustView === 'gra' && !onlyMine) return h + bustHtml(out, 'gra');
   if (onlyMine) h += `<div class="flt"><span>moje:</span><button class="chip ${mojeTab === 'gry' ? 'on' : ''}" data-mt="gry">gry · ${myOn.length}/${my.length}</button><button class="chip ${mojeTab === 'busty' ? 'on' : ''}" data-mt="busty">busty · ${bustsMy(out).length}</button></div>`;
   if (onlyMine && mojeTab === 'gry') h += `<div class="note"><b>moje · gry</b> — tylko modele, które grasz (${myOn.length} w grze${my.length > myOn.length ? `, ${my.length - myOn.length} zakończone` : ''}). Dotknij „▶ moje” jeszcze raz, żeby wrócić do wszystkich.</div>` +
