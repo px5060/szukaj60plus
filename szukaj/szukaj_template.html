@@ -315,7 +315,7 @@ onmessage = e => {
 const CFG = __CFG__;            // {app, seedKey, razem, targets:[...], defRules, minCyc}
 const MASTER_SEED = '__SEED__';
 const POOLS = __POOLS__;        // {x1x:{seedN,pool:[[typ,STEP,x,TRIG,off,tn,STEP2]...]}, ...}
-const APP_VER = '3.19.0';
+const APP_VER = '3.20.0';
 const SEED_N = MASTER_SEED.length / 3;
 const AL = CFG.alph, TPOS = { x1x: 1, xx1: 2, '1xx': 0 };
 const LSK = { my: CFG.app + '_szukajp_v1_moje_', bands: CFG.app + '_szukajp_v1_bands', imp: CFG.app + '_szukajp_v1_lastimp', found: CFG.app + '_szukajp_v1_found_', rules: CFG.app + '_szukajp_v1_rules', tgt: CFG.app + '_szukajp_v1_tgt', ks: CFG.app + '_szukajp_v1_ks' };
@@ -687,9 +687,10 @@ function bustsMy(out) {
   const L = [], seen = new Set(), keep = mybGet(), add = [];
   getMy().forEach(g => { const k = myIndex(g); if (k < 0 || !out[k] || !out[k].bl) return; out[k].bl.forEach(([row, c, nb]) => {
     if (row < g.start) return; const s = specKey(g.m), key = s + '@' + row; seen.add(key);
+    if (out[k].sinceB !== 0 || out[k].lbr !== row) return;   // po BUST-cie był już WIN → nie pokazuj
     const kp = keep.find(x => x.key === key); if (kp && kp.hide) return;
     L.push({ k, row, c, nb, g, key }); if (!kp) add.push({ key, s, id: g.id, row, c, nb, start: g.start }); }); });
-  keep.forEach(x => { if (seen.has(x.key) || x.hide) return; const k = P.findIndex(m => specKey(m) === x.s); if (k < 0 || !out[k]) return; L.push({ k, row: x.row, c: x.c, nb: x.nb, g: { start: x.start }, key: x.key, gone: true }); });
+  keep.forEach(x => { if (seen.has(x.key) || x.hide) return; const k = P.findIndex(m => specKey(m) === x.s); if (k < 0 || !out[k] || out[k].sinceB !== 0 || out[k].lbr !== x.row) return; L.push({ k, row: x.row, c: x.c, nb: x.nb, g: { start: x.start }, key: x.key, gone: true }); });
   if (add.length) lsSet(MYB(), JSON.stringify(keep.concat(add)));
   return L.sort((a, b) => b.row - a.row);
 }
@@ -702,7 +703,7 @@ function bustBdg(out, L) {
 }
 function bustsGra(out, all) {   // all = bez filtra „krok:” (liczniki przy krokach)
   const n = codes.length, L = [];
-  out.forEach((r, k) => { if (!r.bl || !(all || KS.includes(r.bs + 1))) return; r.bl.forEach(([row, c, nb]) => { if (row >= n - bustWin && (bustWin === 20 || row < n - 20) && qual({ nw: c - nb, nbu: nb, cl: 0 }) && BANDS.includes(bandOf({ nw: c - nb, nbu: nb }))) L.push({ k, row, c, nb }); }); });
+  out.forEach((r, k) => { if (!r.bl || r.sinceB !== 0 || !(all || KS.includes(r.bs + 1))) return; r.bl.forEach(([row, c, nb]) => { if (row === r.lbr && row >= n - bustWin && (bustWin === 20 || row < n - 20) && qual({ nw: c - nb, nbu: nb, cl: 0 }) && BANDS.includes(bandOf({ nw: c - nb, nbu: nb }))) L.push({ k, row, c, nb }); }); });
   return L.sort((a, b) => b.row - a.row || a.k - b.k);
 }
 // „po BUST”: modele w kryteriach, w cyklu zaraz po BUST-cie, po TRIGGERZE (zakład ustawiony), na krokach z filtra „krok:”, wg przedziału cykli
@@ -725,9 +726,9 @@ function bustHtml(out, mode) {
   const n = codes.length, my = mode === 'my', L = my ? bustsMy(out) : bustsGra(out);   // filtr „krok:” jak w przedziałach cykli (zaraz po BUST-cie model jest na k1)
   const wW = d => d === 1 ? 'wiersz' : d % 10 >= 2 && d % 10 <= 4 && (d % 100 < 10 || d % 100 >= 20) ? 'wiersze' : 'wierszy';
   const one = BANDS.length === 1 ? bandShort(BANDS[0]) + ' cykli' : 'wszystkie przedziały cykli';
-  let h = my ? `<div class="note"><b>moje · busty</b> — BUST-y (przegrany krok 8) moich modeli od dodania do MOJE, najnowsze u góry. Dotknij → TABELA na wierszu BUST-u.</div>`
+  let h = my ? `<div class="note"><b>moje · busty</b> — BUST-y (przegrany krok 8) moich modeli od dodania do MOJE, które od BUST-u jeszcze nie wygrały (po WIN znikają), najnowsze u góry. Dotknij → TABELA na wierszu BUST-u.</div>`
     : (bustWin === 0 ? `<div class="note"><b>BUST · po BUST</b> — modele w kryteriach, które są w cyklu zaraz po BUST-cie i grają na następnym wierszu albo mają zakład za 2–3 wiersze, na krokach <b>${ksTxt()}</b> (filtr „krok:” — liczby przy krokach = modele po BUST-cie na danym kroku) · <b>${one}</b>. ✕ = wyrzuć z listy (wróci przy kolejnym BUST-cie). Dotknij kartę → TABELA, przytrzymaj → statystyki. „BUST” jeszcze raz = powrót.</div>`
-      : `<div class="note"><b>BUST</b> — każdy model proponowany do gry (przed BUST-em spełniał kryteria), który przegrał krok 8 — <b>512 zł bez trafienia</b> — teraz na krokach <b>${ksTxt()}</b> (filtr „krok:”; zaraz po BUST-cie model jest na k1 8 zł — liczby przy krokach = modele z BUST-em na danym kroku) · <b>${one}</b>. Dotknij → TABELA na wierszu BUST-u. „BUST” jeszcze raz = powrót.</div>`) + `
+      : `<div class="note"><b>BUST</b> — każdy model proponowany do gry (przed BUST-em spełniał kryteria), który przegrał krok 8 — <b>512 zł bez trafienia</b> — i <b>od BUST-u jeszcze nie wygrał</b> (po WIN znika z listy), teraz na krokach <b>${ksTxt()}</b> (filtr „krok:”; zaraz po BUST-cie model jest na k1 8 zł — liczby przy krokach = modele z BUST-em na danym kroku) · <b>${one}</b>. Dotknij → TABELA na wierszu BUST-u. „BUST” jeszcze raz = powrót.</div>`) + `
       <div class="flt"><span>okres:</span>${[[20, 'ostatnie 20 w.'], [40, '21–40 w. wstecz'], [0, 'po BUST']].map(([w, t]) => `<button class="chip ${bustWin === w ? 'on' : ''}" data-bw="${w}">${t}</button>`).join('')}</div>`;
   if (!my) {   // ile modeli z tej listy chowa filtr „krok:” (zaraz po BUST-cie model zaczyna od 8 zł — k1–k2, poza filtrem)
     const x = new Set(pbxGet()), all = bustWin === 0 ? poBustAll(out, true).filter(k => !x.has(pbxKey(k))) : [...new Set(bustsGra(out, true).map(b => b.k))];
