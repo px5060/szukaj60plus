@@ -315,7 +315,7 @@ onmessage = e => {
 const CFG = __CFG__;            // {app, seedKey, razem, targets:[...], defRules, minCyc}
 const MASTER_SEED = '__SEED__';
 const POOLS = __POOLS__;        // {x1x:{seedN,pool:[[typ,STEP,x,TRIG,off,tn,STEP2]...]}, ...}
-const APP_VER = '3.20.0';
+const APP_VER = '3.20.1';
 const SEED_N = MASTER_SEED.length / 3;
 const AL = CFG.alph, TPOS = { x1x: 1, xx1: 2, '1xx': 0 };
 const LSK = { my: CFG.app + '_szukajp_v1_moje_', bands: CFG.app + '_szukajp_v1_bands', imp: CFG.app + '_szukajp_v1_lastimp', found: CFG.app + '_szukajp_v1_found_', rules: CFG.app + '_szukajp_v1_rules', tgt: CFG.app + '_szukajp_v1_tgt', ks: CFG.app + '_szukajp_v1_ks' };
@@ -702,8 +702,14 @@ function bustBdg(out, L) {
   return (soon.length ? `<b class="soon">${soon.join(',')}</b>` : '') + (now ? `<i class="nb">${now}</i>` : '');
 }
 function bustsGra(out, all) {   // all = bez filtra „krok:” (liczniki przy krokach)
-  const n = codes.length, L = [];
-  out.forEach((r, k) => { if (!r.bl || r.sinceB !== 0 || !(all || KS.includes(r.bs + 1))) return; r.bl.forEach(([row, c, nb]) => { if (row === r.lbr && row >= n - bustWin && (bustWin === 20 || row < n - 20) && qual({ nw: c - nb, nbu: nb, cl: 0 }) && BANDS.includes(bandOf({ nw: c - nb, nbu: nb }))) L.push({ k, row, c, nb }); }); });
+  // model, którego ostatni zakończony cykl to BUST (bez WIN po nim), a poprzedni BUST był ≤ 20 cykli wcześniej (bustWin 20) albo 21–40 cykli wcześniej (bustWin 40)
+  const L = [];
+  out.forEach((r, k) => {
+    if (!r.bl || r.bl.length < 2 || r.sinceB !== 0 || !(all || KS.includes(r.bs + 1))) return;
+    const [row, c, nb] = r.bl[r.bl.length - 1], pv = r.bl[r.bl.length - 2], gap = c - pv[1];
+    if (row !== r.lbr || (bustWin === 20 ? gap > 20 : gap <= 20 || gap > 40)) return;
+    if (qual({ nw: c - nb, nbu: nb, cl: 0 }) && BANDS.includes(bandOf({ nw: c - nb, nbu: nb }))) L.push({ k, row, c, nb, prow: pv[0], gap });
+  });
   return L.sort((a, b) => b.row - a.row || a.k - b.k);
 }
 // „po BUST”: modele w kryteriach, w cyklu zaraz po BUST-cie, po TRIGGERZE (zakład ustawiony), na krokach z filtra „krok:”, wg przedziału cykli
@@ -728,23 +734,23 @@ function bustHtml(out, mode) {
   const one = BANDS.length === 1 ? bandShort(BANDS[0]) + ' cykli' : 'wszystkie przedziały cykli';
   let h = my ? `<div class="note"><b>moje · busty</b> — BUST-y (przegrany krok 8) moich modeli od dodania do MOJE, które od BUST-u jeszcze nie wygrały (po WIN znikają), najnowsze u góry. Dotknij → TABELA na wierszu BUST-u.</div>`
     : (bustWin === 0 ? `<div class="note"><b>BUST · po BUST</b> — modele w kryteriach, które są w cyklu zaraz po BUST-cie i grają na następnym wierszu albo mają zakład za 2–3 wiersze, na krokach <b>${ksTxt()}</b> (filtr „krok:” — liczby przy krokach = modele po BUST-cie na danym kroku) · <b>${one}</b>. ✕ = wyrzuć z listy (wróci przy kolejnym BUST-cie). Dotknij kartę → TABELA, przytrzymaj → statystyki. „BUST” jeszcze raz = powrót.</div>`
-      : `<div class="note"><b>BUST</b> — każdy model proponowany do gry (przed BUST-em spełniał kryteria), który przegrał krok 8 — <b>512 zł bez trafienia</b> — i <b>od BUST-u jeszcze nie wygrał</b> (po WIN znika z listy), teraz na krokach <b>${ksTxt()}</b> (filtr „krok:”; zaraz po BUST-cie model jest na k1 8 zł — liczby przy krokach = modele z BUST-em na danym kroku) · <b>${one}</b>. Dotknij → TABELA na wierszu BUST-u. „BUST” jeszcze raz = powrót.</div>`) + `
-      <div class="flt"><span>okres:</span>${[[20, 'ostatnie 20 w.'], [40, '21–40 w. wstecz'], [0, 'po BUST']].map(([w, t]) => `<button class="chip ${bustWin === w ? 'on' : ''}" data-bw="${w}">${t}</button>`).join('')}</div>`;
+      : `<div class="note"><b>BUST</b> — model proponowany do gry (przed BUST-em spełniał kryteria), który przegrał krok 8 — <b>512 zł bez trafienia</b> — i <b>od BUST-u jeszcze nie wygrał</b> (po WIN znika z listy), a jego <b>poprzedni BUST</b> był ≤ 20 albo 21–40 cykli wcześniej (przyciski niżej), teraz na krokach <b>${ksTxt()}</b> (filtr „krok:”; zaraz po BUST-cie model jest na k1 8 zł — liczby przy krokach = modele z BUST-em na danym kroku) · <b>${one}</b>. Dotknij → TABELA na wierszu BUST-u. „BUST” jeszcze raz = powrót.</div>`) + `
+      <div class="flt"><span>poprz. BUST:</span>${[[20, '≤ 20 cykli', ], [40, '21–40 cykli'], [0, 'po BUST']].map(([w, t]) => `<button class="chip ${bustWin === w ? 'on' : ''}" data-bw="${w}">${t}</button>`).join('')}</div>`;
   if (!my) {   // ile modeli z tej listy chowa filtr „krok:” (zaraz po BUST-cie model zaczyna od 8 zł — k1–k2, poza filtrem)
     const x = new Set(pbxGet()), all = bustWin === 0 ? poBustAll(out, true).filter(k => !x.has(pbxKey(k))) : [...new Set(bustsGra(out, true).map(b => b.k))];
     const vis = new Set(bustWin === 0 ? poBust(out) : L.map(b => b.k)), hid = all.filter(k => !vis.has(k)), h8 = hid.filter(k => out[k].bs < 2).length, h512 = hid.filter(k => out[k].bs === 7).length;
     if (hid.length) h += `<div class="hint" style="margin:0 2px 6px">filtr „krok:” ukrywa ${hid.length} ${hid.length === 1 ? 'model' : hid.length % 10 >= 2 && hid.length % 10 <= 4 && (hid.length % 100 < 10 || hid.length % 100 >= 20) ? 'modele' : 'modeli'} z tej listy${h8 ? ` · ${h8} na 8 zł (k1–k2, zaraz po BUST-cie)` : ''}${h512 ? ` · ${h512} na 512 zł (k8)` : ''}</div>`;
   }
   if (!my && bustWin === 0) return h + poBustHtml(out);
-  if (!L.length) return h + `<div class="empty" style="padding:10px 4px">${my ? 'Żaden z moich modeli nie miał BUST-u od dodania.' : `Brak BUST-ów modeli z kryteriów w ${bustWin === 20 ? 'ostatnich 20 wierszach' : 'wierszach 21–40 od końca'}, które są teraz na krokach ${ksTxt()}.`}</div>`;
+  if (!L.length) return h + `<div class="empty" style="padding:10px 4px">${my ? 'Żaden z moich modeli nie miał BUST-u od dodania.' : `Brak modeli z kryteriów po BUST-cie (bez WIN), których poprzedni BUST był ${bustWin === 20 ? '≤ 20 cykli' : '21–40 cykli'} wcześniej, na krokach ${ksTxt()}.`}</div>`;
   const nm = new Set(L.map(x => x.k)).size;
-  h += `<div class="hint" style="margin:0 2px 6px">${L.length} BUST-ów · ${nm} ${nm === 1 ? 'model' : 'modeli'}${my ? '' : bustWin === 20 ? ` · ostatnie 20 wierszy (w.${n - 19}–${n})` : ` · wiersze 21–40 od końca (w.${n - 39}–${n - 20})`}</div>`;
+  h += `<div class="hint" style="margin:0 2px 6px">${L.length} BUST-ów · ${nm} ${nm === 1 ? 'model' : 'modeli'}${my ? '' : ` · poprzedni BUST ${bustWin === 20 ? '≤ 20' : '21–40'} cykli wcześniej`}</div>`;
   h += L.slice(0, bustCap).map(x => {
     const r = out[x.k], d = n - 1 - x.row, cyc = x.c + 1, lim = limitFor(x.c);
     const act = r.ph === 2;
     return `<div class="brow${act ? ' bon' : ''}" data-bk="${x.k}" data-brow="${x.row}"><div class="bh"><b>${mid(x.k, P[x.k])}</b><span class="neg">✖ BUST w.${x.row + 1}</span><span class="mu">${d ? `${d} ${wW(d)} temu` : 'ostatni kod'}</span>${my && x.key ? `<button class="bx" data-mybx="${esc(x.key)}" title="usuń z „moje · busty”">✕</button>` : ''}</div>
       <div class="bs">${esc(ruleTxt(P[x.k]))}</div>
-      <div class="bs">przed BUST-em: ${x.c} cykli · BUST ${x.nb}/${lim === null ? '—' : lim}${x.g ? ` · w MOJE od w.${x.g.start + 1}` : ''}${x.gone ? ' · <b>usunięty z MOJE</b>' : ''} · teraz krok ${r.bs + 1} · ${r.pnl >= 0 ? '+' : ''}${r.pnl} zł</div></div>` + (act ? card(x.k, P[x.k], r, phaseOf(r)) : '');
+      <div class="bs">przed BUST-em: ${x.c} cykli · BUST ${x.nb}/${lim === null ? '—' : lim}${x.g ? ` · w MOJE od w.${x.g.start + 1}` : ''}${x.gone ? ' · <b>usunięty z MOJE</b>' : ''}${x.prow != null ? ` · <b>poprzedni BUST w.${x.prow + 1} (${x.gap} ${x.gap === 1 ? 'cykl' : x.gap % 10 >= 2 && x.gap % 10 <= 4 && (x.gap % 100 < 10 || x.gap % 100 >= 20) ? 'cykle' : 'cykli'} wcześniej)</b>` : ''} · teraz krok ${r.bs + 1} · ${r.pnl >= 0 ? '+' : ''}${r.pnl} zł</div></div>` + (act ? card(x.k, P[x.k], r, phaseOf(r)) : '');
   }).join('');
   if (L.length > bustCap) h += `<button class="btn more" id="bustMore">Pokaż więcej (${L.length - bustCap})</button>`;
   return h;
