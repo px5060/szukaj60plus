@@ -27,6 +27,8 @@ header .n{color:var(--mu);font-size:12px}
 .tgt{display:flex;gap:6px;margin-top:7px}
 .chip{background:var(--card);border:1px solid var(--bd);color:var(--tx);border-radius:16px;padding:5px 11px;font-size:13px;font-weight:600}
 .chip.on{background:var(--or);border-color:var(--or);color:#fff}
+.chip{position:relative}.chip b.soon{position:absolute;top:-8px;left:-6px;min-width:16px;height:16px;border-radius:8px;background:#FFD700;color:#000;font:700 10px/16px system-ui;padding:0 4px;border:1px solid #fff}.chip i.nb{position:absolute;top:-8px;right:-6px;min-width:16px;height:16px;border-radius:8px;background:#FF6600;color:#fff;font:700 10px/16px system-ui;font-style:normal;padding:0 4px;border:1px solid #fff}.chip.on i.nb{background:#fff;color:#FF6600}
+.brow.bon{border-left-color:#FF6600;margin-bottom:2px}.brow .bx{margin-left:auto;background:none;border:1px solid var(--bd);color:var(--mu);border-radius:6px;padding:0 7px;font-size:13px}
 main{padding:10px 12px 90px;max-width:760px;margin:0 auto}
 .ban{border-radius:10px;padding:9px 12px;margin-bottom:8px;font-weight:700}
 .ban.bet{background:var(--or);color:#fff}.ban.idle{background:var(--card);font-weight:500}
@@ -313,7 +315,7 @@ onmessage = e => {
 const CFG = __CFG__;            // {app, seedKey, razem, targets:[...], defRules, minCyc}
 const MASTER_SEED = '__SEED__';
 const POOLS = __POOLS__;        // {x1x:{seedN,pool:[[typ,STEP,x,TRIG,off,tn,STEP2]...]}, ...}
-const APP_VER = '3.18.1';
+const APP_VER = '3.19.0';
 const SEED_N = MASTER_SEED.length / 3;
 const AL = CFG.alph, TPOS = { x1x: 1, xx1: 2, '1xx': 0 };
 const LSK = { my: CFG.app + '_szukajp_v1_moje_', bands: CFG.app + '_szukajp_v1_bands', imp: CFG.app + '_szukajp_v1_lastimp', found: CFG.app + '_szukajp_v1_found_', rules: CFG.app + '_szukajp_v1_rules', tgt: CFG.app + '_szukajp_v1_tgt', ks: CFG.app + '_szukajp_v1_ks' };
@@ -679,10 +681,24 @@ function myCardsHtml(out, my, myOn, selMine) {
   return s + '</div>';
 }
 // ---- BUST: w MOJE GRY (od dodania) i z GRA (modele, które przed BUST-em spełniały kryteria = były proponowane do gry) ----
+const MYB = () => CFG.app + '_szukaj_v1_mybust_' + tgt;   // BUST-y moich modeli — zostają po usunięciu modelu z MOJE
+function mybGet() { try { const v = JSON.parse(lsGet(MYB(), '[]')); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
 function bustsMy(out) {
-  const L = [];
-  getMy().forEach(g => { const k = myIndex(g); if (k < 0 || !out[k] || !out[k].bl) return; out[k].bl.forEach(([row, c, nb]) => { if (row >= g.start) L.push({ k, row, c, nb, g }); }); });
+  const L = [], seen = new Set(), keep = mybGet(), add = [];
+  getMy().forEach(g => { const k = myIndex(g); if (k < 0 || !out[k] || !out[k].bl) return; out[k].bl.forEach(([row, c, nb]) => {
+    if (row < g.start) return; const s = specKey(g.m), key = s + '@' + row; seen.add(key);
+    const kp = keep.find(x => x.key === key); if (kp && kp.hide) return;
+    L.push({ k, row, c, nb, g, key }); if (!kp) add.push({ key, s, id: g.id, row, c, nb, start: g.start }); }); });
+  keep.forEach(x => { if (seen.has(x.key) || x.hide) return; const k = P.findIndex(m => specKey(m) === x.s); if (k < 0 || !out[k]) return; L.push({ k, row: x.row, c: x.c, nb: x.nb, g: { start: x.start }, key: x.key, gone: true }); });
+  if (add.length) lsSet(MYB(), JSON.stringify(keep.concat(add)));
   return L.sort((a, b) => b.row - a.row);
+}
+function mybHide(key) { const a = mybGet(); const x = a.find(z => z.key === key); if (x) { x.hide = 1; lsSet(MYB(), JSON.stringify(a)); } }
+// znaczki jak w RAZEM: pomarańczowy = ile modeli z listy gra na następnym wierszu, żółty = GRA za 2–3 wiersze
+function bustBdg(out, L) {
+  const n = codes.length, ks = [...new Set(L.map(x => x.k))].filter(k => out[k] && out[k].ph === 2);
+  const now = ks.filter(k => out[k].wz === n).length, soon = [...new Set(ks.filter(k => out[k].wz > n).map(k => out[k].wz + 1 - n).filter(d => d >= 2 && d <= 3))].sort((a, b) => a - b);
+  return (soon.length ? `<b class="soon">${soon.join(',')}</b>` : '') + (now ? `<i class="nb">${now}</i>` : '');
 }
 function bustsGra(out, all) {   // all = bez filtra „krok:” (liczniki przy krokach)
   const n = codes.length, L = [];
@@ -724,9 +740,10 @@ function bustHtml(out, mode) {
   h += `<div class="hint" style="margin:0 2px 6px">${L.length} BUST-ów · ${nm} ${nm === 1 ? 'model' : 'modeli'}${my ? '' : bustWin === 20 ? ` · ostatnie 20 wierszy (w.${n - 19}–${n})` : ` · wiersze 21–40 od końca (w.${n - 39}–${n - 20})`}</div>`;
   h += L.slice(0, bustCap).map(x => {
     const r = out[x.k], d = n - 1 - x.row, cyc = x.c + 1, lim = limitFor(x.c);
-    return `<div class="brow" data-bk="${x.k}" data-brow="${x.row}"><div class="bh"><b>${mid(x.k, P[x.k])}</b><span class="neg">✖ BUST w.${x.row + 1}</span><span class="mu">${d ? `${d} ${wW(d)} temu` : 'ostatni kod'}</span></div>
+    const act = r.ph === 2;
+    return `<div class="brow${act ? ' bon' : ''}" data-bk="${x.k}" data-brow="${x.row}"><div class="bh"><b>${mid(x.k, P[x.k])}</b><span class="neg">✖ BUST w.${x.row + 1}</span><span class="mu">${d ? `${d} ${wW(d)} temu` : 'ostatni kod'}</span>${my && x.key ? `<button class="bx" data-mybx="${esc(x.key)}" title="usuń z „moje · busty”">✕</button>` : ''}</div>
       <div class="bs">${esc(ruleTxt(P[x.k]))}</div>
-      <div class="bs">przed BUST-em: ${x.c} cykli · BUST ${x.nb}/${lim === null ? '—' : lim}${x.g ? ` · w MOJE od w.${x.g.start + 1}` : ''} · teraz krok ${r.bs + 1} · ${r.pnl >= 0 ? '+' : ''}${r.pnl} zł</div></div>`;
+      <div class="bs">przed BUST-em: ${x.c} cykli · BUST ${x.nb}/${lim === null ? '—' : lim}${x.g ? ` · w MOJE od w.${x.g.start + 1}` : ''}${x.gone ? ' · <b>usunięty z MOJE</b>' : ''} · teraz krok ${r.bs + 1} · ${r.pnl >= 0 ? '+' : ''}${r.pnl} zł</div></div>` + (act ? card(x.k, P[x.k], r, phaseOf(r)) : '');
   }).join('');
   if (L.length > bustCap) h += `<button class="btn more" id="bustMore">Pokaż więcej (${L.length - bustCap})</button>`;
   return h;
@@ -799,9 +816,9 @@ function renderGra() {
     `<button class="chip mine ${onlyMine ? 'on' : ''}" data-mine="1">▶ moje · ${my.length}</button></div>`;
   const shown = i => R.rules[i][0] !== null || B[i].length > 0;   // ★ 400+ tylko gdy model jest na kroku gry
   if (!onlyMine) { const allB = R.rules.length === BANDS.length && R.rules.every((_, i) => BANDS.includes(i)), one = !allB && BANDS.length === 1 ? BANDS[0] : -1;
-    h += `<div class="flt"><span>cykle:</span>${R.rules.map((_, i) => `<button class="chip ${i === one ? 'on' : ''}" data-b="${i}">${bandShort(i)} · ${B[i].length}</button>`).join('')}<button class="chip ${bustView === 'gra' ? 'on' : ''}" data-bv="gra">BUST · ${bustWin === 0 ? poBust(out).length : bustsGra(out).length}</button></div>`; }
+    h += `<div class="flt"><span>cykle:</span>${R.rules.map((_, i) => `<button class="chip ${i === one ? 'on' : ''}" data-b="${i}">${bandShort(i)} · ${B[i].length}</button>`).join('')}<button class="chip ${bustView === 'gra' ? 'on' : ''}" data-bv="gra">${bustBdg(out, bustWin === 0 ? poBust(out).map(k => ({ k })) : bustsGra(out))}BUST · ${bustWin === 0 ? poBust(out).length : bustsGra(out).length}</button></div>`; }
   if (bustView === 'gra' && !onlyMine) return h + bustHtml(out, 'gra');
-  if (onlyMine) h += `<div class="flt"><span>moje:</span><button class="chip ${mojeTab === 'gry' ? 'on' : ''}" data-mt="gry">gry · ${myOn.length}/${my.length}</button><button class="chip ${mojeTab === 'busty' ? 'on' : ''}" data-mt="busty">busty · ${bustsMy(out).length}</button><button class="chip ${mojeTab === 'wg' ? 'on' : ''}" data-mt="wg">w grze · ${wgCount(out)}</button></div>`;
+  if (onlyMine) h += `<div class="flt"><span>moje:</span><button class="chip ${mojeTab === 'gry' ? 'on' : ''}" data-mt="gry">gry · ${myOn.length}/${my.length}</button><button class="chip ${mojeTab === 'busty' ? 'on' : ''}" data-mt="busty">${bustBdg(out, bustsMy(out))}busty · ${bustsMy(out).length}</button><button class="chip ${mojeTab === 'wg' ? 'on' : ''}" data-mt="wg">w grze · ${wgCount(out)}</button></div>`;
   if (onlyMine && mojeTab === 'wg') return h + wgHtml(out);
   if (onlyMine && mojeTab === 'gry') h += `<div class="note"><b>moje · gry</b> — tylko modele, które grasz (${myOn.length} w grze${my.length > myOn.length ? `, ${my.length - myOn.length} zakończone` : ''}). Dotknij „▶ moje” jeszcze raz, żeby wrócić do wszystkich.</div>` +
     (my.length ? '' : `<div class="empty" style="padding:10px 4px">Nie grasz jeszcze żadnego modelu. Przytrzymaj kartę modelu → „▶ Gram ten model”.</div>`);
@@ -1315,6 +1332,7 @@ function render() {
     el.querySelectorAll('[data-bv]').forEach(b => b.onclick = () => { bustView = bustView === b.dataset.bv ? '' : b.dataset.bv; bustCap = 40; render(); scrollTo(0, 0); });
     el.querySelectorAll('[data-bw]').forEach(b => b.onclick = () => { bustWin = +b.dataset.bw; bustCap = 40; try { localStorage.setItem(CFG.app + '_szukajp_v1_bwin', String(bustWin)); } catch (e) {} render(); });
     { const bm = $('bustMore'); if (bm) bm.onclick = () => { bustCap += 40; render(); }; }
+    el.querySelectorAll('[data-mybx]').forEach(b => b.onclick = e => { e.stopPropagation(); mybHide(b.dataset.mybx); render(); });
     el.querySelectorAll('.brow').forEach(r => r.onclick = () => { const k = +r.dataset.bk; goBet({ m: P[k].slice(0, SPECN), id: mid(k, P[k]), row: +r.dataset.brow }); });
     el.querySelectorAll('[data-mt]').forEach(b => b.onclick = () => { mojeTab = b.dataset.mt; render(); scrollTo(0, 0); });
     el.querySelectorAll('[data-mine]').forEach(b => b.onclick = () => { onlyMine = !onlyMine; mojeTab = 'gry'; try { localStorage.setItem(CFG.app + '_szukajp_v1_onlymine', onlyMine ? '1' : '0'); } catch (e) {} render(); scrollTo(0, 0); });
