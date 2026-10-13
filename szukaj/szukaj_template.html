@@ -315,7 +315,7 @@ onmessage = e => {
 const CFG = __CFG__;            // {app, seedKey, razem, targets:[...], defRules, minCyc}
 const MASTER_SEED = '__SEED__';
 const POOLS = __POOLS__;        // {x1x:{seedN,pool:[[typ,STEP,x,TRIG,off,tn,STEP2]...]}, ...}
-const APP_VER = '3.20.1';
+const APP_VER = '3.21.0';
 const SEED_N = MASTER_SEED.length / 3;
 const AL = CFG.alph, TPOS = { x1x: 1, xx1: 2, '1xx': 0 };
 const LSK = { my: CFG.app + '_szukajp_v1_moje_', bands: CFG.app + '_szukajp_v1_bands', imp: CFG.app + '_szukajp_v1_lastimp', found: CFG.app + '_szukajp_v1_found_', rules: CFG.app + '_szukajp_v1_rules', tgt: CFG.app + '_szukajp_v1_tgt', ks: CFG.app + '_szukajp_v1_ks' };
@@ -388,7 +388,7 @@ function renderSheet() {
   $('spTab').onclick = () => { closeStats(); openTab(k); };
   const bsv = $('btSave'); if (bsv) bsv.onclick = () => { const nr = +$('btNr').value, kk = +$('btK').value, zl = +$('btZl').value;
     if (!(nr >= 1) || !(kk >= 1 && kk <= 8) || !(zl > 0)) { $('btHd').textContent = 'Podaj Nr wiersza, krok 1–8 i kwotę w zł'; return; } addBet(k, nr - 1, kk, zl); renderSheet(); };
-  const rz = $('spRz'); if (rz) rz.onclick = () => { rzToggle(k); renderSheet(); };
+  const rz = $('spRz'); if (rz) rz.onclick = () => mjGo(k);
   const p = $('spPlay'); if (p) p.onclick = () => { startMy(k); renderSheet(); };
   const s = $('spStop'); if (s) s.onclick = () => { if (confirm('Usunąć z MOJE GRY?')) { stopMy(specKey(m)); renderSheet(); } };
 }
@@ -432,10 +432,16 @@ function rzToggle(k) {
   a.push({ m: rzNorm(P[k]), tgt, id: `${RZ_SRC === 'SZUKAJ+' ? 'S+' : 'S'}·${CFG.targets.length > 1 ? tgt + '·' : ''}${orig}`, orig, src: RZ_SRC, t: Date.now(), start: codes.length });
   if (lsSet(RZK, JSON.stringify(a))) toast(`${orig} dodany do ${CFG.razem} — zakładka SZUKAJ`); else alert('BŁĄD zapisu pamięci telefonu!');
 }
+// ---- ⇢ MOJE: nowa aplikacja zbierająca moje gry ze wszystkich SZUKAJ (px5060.github.io/moje/) — zamiast wysyłki do RAZEM ----
+const MJ_A = 'S+';
+function mjGo(k) {
+  if (!isMine(k)) startMy(k);
+  const m = specKey(P[k]).split('|'), n = [m[0], m[1], +m[2] || 1, m[3], +m[4] || 1, +m[5] || 1, m[6] || ''];
+  location.href = '/moje/?open=' + encodeURIComponent([CFG.app, MJ_A, tgt, n.join('|')].join('~'));
+}
 function rzBtn(k) {
-  const on = rzHas(k);
-  return `<button class="btn more" id="spRz" style="margin-top:10px;${on ? 'border:1px solid #5fd38a;color:#5fd38a' : 'background:#7030A0;color:#fff;border:0'}">${on ? `✓ W ${CFG.razem} (zakładka SZUKAJ) — usuń stamtąd` : `⇢ Dodaj do ${CFG.razem} — zakładka SZUKAJ`}</button>` +
-    (on ? '' : `<div class="hint" style="margin-top:4px">Model trafi do ${CFG.razem} (zakładka SZUKAJ): liczony na wspólnym ciągu, karty na GRA, MOJE GRY i MOJE ZAKŁADY jak modele z innych tabel.</div>`);
+  return `<button class="btn more" id="spRz" style="margin-top:10px;background:#1f8a4c;color:#fff;border:0">${isMine(k) ? '⇢ Otwórz w MOJE (wszystkie moje gry)' : '⇢ Gram — dodaj do MOJE i otwórz'}</button>` +
+    `<div class="hint" style="margin-top:4px">MOJE zbiera modele, które grasz, ze wszystkich aplikacji SZUKAJ (T50 i T60): co gra teraz, kroki, BUST-y, zakłady i statystyki.</div>`;
 }
 
 // ---- worker ----
