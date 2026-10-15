@@ -316,7 +316,7 @@ onmessage = e => {
 const CFG = __CFG__;            // {app, seedKey, razem, targets:[...], defRules, minCyc}
 const MASTER_SEED = '__SEED__';
 const POOLS = __POOLS__;        // {x1x:{seedN,pool:[[typ,STEP,x,TRIG,off,tn,STEP2]...]}, ...}
-const APP_VER = '3.24.0';
+const APP_VER = '3.24.1';
 const SEED_N = MASTER_SEED.length / 3;
 const AL = CFG.alph, TPOS = { x1x: 1, xx1: 2, '1xx': 0 };
 const LSK = { my: CFG.app + '_szukajp_v1_moje_', bands: CFG.app + '_szukajp_v1_bands', imp: CFG.app + '_szukajp_v1_lastimp', found: CFG.app + '_szukajp_v1_found_', rules: CFG.app + '_szukajp_v1_rules', tgt: CFG.app + '_szukajp_v1_tgt', ks: CFG.app + '_szukajp_v1_ks' };
@@ -640,14 +640,14 @@ function card(k, m, r, kind) {
   } else st = `<div class="st p6">Czekam na STEP${m[0] === 'S' ? ` (licznik ${r.cnt}/${m[2]})` : ''}</div>`;
   return `<div class="mc k${step}${r.sinceB === 0 ? ' abust' : ''}${isTop(r) ? ' ktop' : ''}" data-mk="${k}"><div class="h"><span class="id">${mid(k, m)}${isTop(r) ? ` <span class="top">★ ${topCyc()}+ cykli</span>` : ''}</span><span class="stk">krok ${step} · ${stake} zł</span></div>
     <div class="rule">${cardStats(r)}</div>${afterBustHtml(r)}${st}
-    <div class="meta"><span>LOST ${r.nbu} z max ${lim === null ? '—' : lim}</span></div><div class="tapt">dotknij → TABELA · przytrzymaj → STATYSTYKI i „Gram ten model”</div></div>`;
+    <div class="tapt">dotknij → TABELA · przytrzymaj → STATYSTYKI i „Gram ten model”</div></div>`;
 }
 const ST = [8, 8, 16, 32, 64, 128, 256, 512];
 // statystyki w karcie zamiast kodów STEP / TRIGGER: zarobek, WIN / LOST, na których krokach WIN najczęściej, ostatnie 3 wyniki
 function cardStats(r) {
   const w = r.wk || [], top = w.map((v, i) => [v, i + 1]).filter(x => x[0]).sort((a, b) => b[0] - a[0]).slice(0, 3);
   const l3 = (r.l3 || []).map(v => v ? `<i>W${v}</i>` : '<i class="b">L</i>').join('');
-  return `<span class="${r.pnl >= 0 ? 'pos' : 'neg'}" style="font-weight:800">${r.pnl >= 0 ? '+' : ''}${r.pnl} zł</span> · WIN <b>${r.nw}</b> · LOST <b>${r.nbu}</b>${l3 ? ` <span class="l3">ostatnie:${l3}</span>` : ''}` +
+  return `<span class="${r.pnl >= 0 ? 'pos' : 'neg'}" style="font-weight:800">${r.pnl >= 0 ? '+' : ''}${r.pnl} zł</span> · WIN <b>${r.nw}</b> · LOST <b>${r.nbu}/${(l => l === null ? '—' : l)(limitFor(r.nw + r.nbu))}</b>${l3 ? ` <span class="l3">ostatnie:${l3}</span>` : ''}` +
     (top.length ? `<br>WIN najczęściej: ${top.map(([v, k]) => `<b>k${k}</b> ${Math.round(100 * v / (r.nw || 1))}%`).join(' · ')}` : '');
 }
 function limitFor(cyc) { for (const [mc, mb] of R.rules) if (mc === null || cyc <= mc) return mb; return null; }
