@@ -422,7 +422,7 @@ onmessage = e => {
 const CFG = __CFG__;            // {app, seedKey, razem, targets:[...], defRules, minCyc}
 const MASTER_SEED = '__SEED__';
 const POOLS = __POOLS__;        // {x1x:{seedN,pool:[[typ,STEP,x,TRIG,off,tn,STEP2]...]}, ...}
-const APP_VER = '3.29.2';
+const APP_VER = '3.29.3';
 const SEED_N = MASTER_SEED.length / 3;
 const AL = CFG.alph, TPOS = { x1x: 1, xx1: 2, '1xx': 0 };
 const LSK = { my: CFG.app + '_szukajp_v1_moje_', bands: CFG.app + '_szukajp_v1_bands', imp: CFG.app + '_szukajp_v1_lastimp', found: CFG.app + '_szukajp_v1_found_', rules: CFG.app + '_szukajp_v1_rules', tgt: CFG.app + '_szukajp_v1_tgt', ks: CFG.app + '_szukajp_v1_ks' };
@@ -483,7 +483,7 @@ function startMy(k) {
   a.push({ m: P[k].slice(0, 7), id: mid(k, P[k]), start: codes.length, s0: r.bs + 1, t: Date.now() });
   setMy(a); toast(`Gram ${mid(k, P[k])} od kroku ${r.bs + 1} (${ST[r.bs]} zł) — w MOJE GRY do WIN / BUST`); render();
 }
-// ---- okno STATYSTYKI modelu (przytrzymanie karty): statystyki + „Gram ten model” → MOJE GRY ----
+// ---- okno STATYSTYKI modelu (dotknięcie karty): statystyki + „Gram ten model” → MOJE GRY ----
 let statK = null;
 function openStats(k) { statK = k; if (selK !== k) { selK = k; tabN = 150; tabScroll = true; hlBet = -1; liveOn = false; } needLabels(); renderSheet(); }
 function closeStats() { statK = null; const o = $('statPop'); if (o) o.remove(); }
@@ -511,16 +511,17 @@ function renderSheet() {
   const p = $('spPlay'); if (p) p.onclick = () => { startMy(k); renderSheet(); };
   const s = $('spStop'); if (s) s.onclick = () => { if (confirm('Usunąć z MOJE GRY?')) { stopMy(specKey(m)); renderSheet(); } };
 }
-// dotknięcie karty → TABELA; przytrzymanie (albo prawy klik) → STATYSTYKI
+// dotknięcie karty → STATYSTYKI; przytrzymanie (albo prawy klik) → TABELA (w MOJE GRY: tabela z moją grą)
 function bindCard(c) {
   const k = +c.dataset.mk; let t = null, lp = false, x0 = 0, y0 = 0;
   const cancel = () => { clearTimeout(t); t = null; };
-  c.addEventListener('pointerdown', e => { lp = false; x0 = e.clientX; y0 = e.clientY; cancel(); t = setTimeout(() => { lp = true; c.classList.add('hold'); setTimeout(() => c.classList.remove('hold'), 250); openStats(k); }, 550); });
+  c.addEventListener('pointerdown', e => { lp = false; x0 = e.clientX; y0 = e.clientY; cancel(); t = setTimeout(() => { lp = true; c.classList.add('hold'); setTimeout(() => c.classList.remove('hold'), 250); tabOf(c, k); }, 550); });
   c.addEventListener('pointermove', e => { if (t && Math.hypot(e.clientX - x0, e.clientY - y0) > 10) cancel(); });
   ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => c.addEventListener(ev, cancel));
-  c.addEventListener('contextmenu', e => { e.preventDefault(); cancel(); lp = true; openStats(k); });
-  c.onclick = () => { if (lp) { lp = false; return; } if (c.closest('.sec.mine')) openMine(k); else openTab(k); };
+  c.addEventListener('contextmenu', e => { e.preventDefault(); cancel(); lp = true; tabOf(c, k); });
+  c.onclick = () => { if (lp) { lp = false; return; } openStats(k); };
 }
+function tabOf(c, k) { if (c.closest('.sec.mine')) openMine(k); else openTab(k); }
 function stopMy(key) { setMy(getMy().filter(g => specKey(g.m) !== key)); render(); }
 function myResult(g, r) {   // null = gra trwa; inaczej wynik od wejścia (stawki gracza od kroku s0)
   if (!r || r.le < g.start) return null;
@@ -824,7 +825,7 @@ function card(k, m, r, kind) {
   if (rb) st = (kind === 'gra' || kind === 'czeka') ? st.replace('class="st ', `class="st real ${rb[0]} `).replace(/<\/div>$/, `<span class="rb">${rb[1]}</span></div>`) : st + `<div class="st real ${rb[0]}"><span class="rb">${rb[1]}</span></div>`;
   return `<div class="mc k${step}${r.sinceB === 0 ? ' abust' : ''}${isTop(r) ? ' ktop' : ''}" data-mk="${k}"><div class="h"><span class="id">${mid(k, m)}${isTop(r) ? ` <span class="top">★ ${topCyc()}+ cykli</span>` : ''}${ocTag(k)}</span><span class="stk">krok ${step} · ${stake} zł</span></div>
     <div class="rule">${cardStats(r)}</div>${afterBustHtml(r)}${st}
-    <div class="tapt">dotknij → TABELA · przytrzymaj → STATYSTYKI i „Gram ten model”</div></div>`;
+    <div class="tapt">dotknij → STATYSTYKI i „Gram ten model” · przytrzymaj → TABELA</div></div>`;
 }
 const ST = [8, 8, 16, 32, 64, 128, 256, 512];
 // statystyki w karcie zamiast kodów STEP / TRIGGER: zarobek, WIN / LOST, na których krokach WIN najczęściej, ostatnie 3 wyniki
@@ -872,7 +873,7 @@ function myCardsHtml(out, my, myOn, selMine) {
       if (res) s += `<div class="mc ${res.win ? 'mwin' : 'mbust'}${sel}" data-mk="${k}"><div class="h"><span class="id">${mid(k, P[k])}</span><span class="stk">${res.win ? 'WIN' : 'BUST'}</span></div>${head}
         <div class="st ${res.win ? 'pw' : 'pb'}">${res.win ? `WIN na kroku ${res.k} (${ST[res.k - 1]} zł) w w.${res.row + 1}` : `BUST na kroku 8 w w.${res.row + 1}`}<span class="s">Twój wynik od wejścia: ${res.pnl >= 0 ? '+' : ''}${res.pnl} zł</span></div>
         <button class="btn more" data-stop="${esc(key)}">Zakończ — usuń z MOJE GRY</button></div>`;
-      else s += card(k, P[k], r, phaseOf(r)).replace('<div class="rule">', head + '<div class="rule">').replace('class="mc ', `class="mc${sel} `).replace('dotknij → TABELA ·', 'dotknij → tabela w MOJE ·') +
+      else s += card(k, P[k], r, phaseOf(r)).replace('<div class="rule">', head + '<div class="rule">').replace('class="mc ', `class="mc${sel} `).replace('przytrzymaj → TABELA', 'przytrzymaj → tabela modelu') +
         `<button class="btn more" data-stop="${esc(key)}" style="margin:-2px 0 8px">Przestań śledzić ${mid(k, P[k])}</button>`;
     });
   return s + '</div>';
@@ -930,7 +931,7 @@ function bustHtml(out, mode) {
   const wW = d => d === 1 ? 'wiersz' : d % 10 >= 2 && d % 10 <= 4 && (d % 100 < 10 || d % 100 >= 20) ? 'wiersze' : 'wierszy';
   const one = BANDS.length === 1 ? bandShort(BANDS[0]) + ' cykli' : 'wszystkie przedziały cykli';
   let h = my ? `<div class="note"><b>moje · busty</b> — BUST-y (przegrany krok 8) moich modeli od dodania do MOJE, które od BUST-u jeszcze nie wygrały (po WIN znikają), najnowsze u góry. Dotknij → TABELA na wierszu BUST-u.</div>`
-    : (bustWin === 0 ? `<div class="note"><b>BUST · po BUST</b> — modele w kryteriach, które są w cyklu zaraz po BUST-cie i grają na następnym wierszu albo mają zakład za 2–3 wiersze, na krokach <b>${ksTxt()}</b> (filtr „krok:” — liczby przy krokach = modele po BUST-cie na danym kroku) · <b>${one}</b>. ✕ = wyrzuć z listy (wróci przy kolejnym BUST-cie). Dotknij kartę → TABELA, przytrzymaj → statystyki. „BUST” jeszcze raz = powrót.</div>`
+    : (bustWin === 0 ? `<div class="note"><b>BUST · po BUST</b> — modele w kryteriach, które są w cyklu zaraz po BUST-cie i grają na następnym wierszu albo mają zakład za 2–3 wiersze, na krokach <b>${ksTxt()}</b> (filtr „krok:” — liczby przy krokach = modele po BUST-cie na danym kroku) · <b>${one}</b>. ✕ = wyrzuć z listy (wróci przy kolejnym BUST-cie). Dotknij kartę → statystyki, przytrzymaj → TABELA. „BUST” jeszcze raz = powrót.</div>`
       : `<div class="note"><b>BUST</b> — model proponowany do gry (przed BUST-em spełniał kryteria), który przegrał krok 8 — <b>512 zł bez trafienia</b> — i <b>od BUST-u jeszcze nie wygrał</b> (po WIN znika z listy), a jego <b>poprzedni BUST</b> był ≤ 20 albo 21–40 cykli wcześniej (przyciski niżej), teraz na krokach <b>${ksTxt()}</b> (filtr „krok:”; zaraz po BUST-cie model jest na k1 8 zł — liczby przy krokach = modele z BUST-em na danym kroku) · <b>${one}</b>. Dotknij → TABELA na wierszu BUST-u. „BUST” jeszcze raz = powrót.</div>`) + `
       <div class="flt"><span>poprz. BUST:</span>${[[20, '≤ 20 cykli', ], [40, '21–40 cykli'], [0, 'po BUST']].map(([w, t]) => `<button class="chip ${bustWin === w ? 'on' : ''}" data-bw="${w}">${t}</button>`).join('')}</div>`;
   if (!my) {   // ile modeli z tej listy chowa filtr „krok:” (zaraz po BUST-cie model zaczyna od 8 zł — k1–k2, poza filtrem)
@@ -1494,7 +1495,7 @@ function renderMoje() {
   ensureMyFromBets();
   if (!lastEval) return `<div class="ban idle">Liczę…</div>`;
   const out = lastEval.out, my = getMy().map(g => ({ g, k: myIndex(g) })).filter(x => x.k >= 0), myOn = my.filter(x => !myResult(x.g, out[x.k]));
-  if (!my.length) return `<div class="note"><b>MOJE MODELE</b> — nie grasz jeszcze żadnego modelu.<br>Na ekranie GRA przytrzymaj kartę modelu → „▶ Gram ten model”.</div>` + betsSummary();
+  if (!my.length) return `<div class="note"><b>MOJE MODELE</b> — nie grasz jeszcze żadnego modelu.<br>Na ekranie GRA dotknij kartę modelu → „▶ Gram ten model”.</div>` + betsSummary();
   if (!my.some(x => x.k === selK)) { selK = (myOn[0] || my[0]).k; needLabels(); }
   tabMine = true;
   const h = `<div class="note"><b>W MOJE</b> — modele dodane do MOJE z tej aplikacji (${my.length}, w grze ${myOn.length}). Wszystkie moje gry ze wszystkich aplikacji: <a href="/moje/" style="color:var(--or);font-weight:800">⇢ otwórz MOJE</a></div>` + myCardsHtml(out, my, myOn, selK) + betsSummary() + `<div class="note" style="margin-top:4px">Tabela modelu <b>${mid(selK, P[selK])}</b> — dotknij innej karty wyżej, żeby zmienić model.</div>` + renderTab();
