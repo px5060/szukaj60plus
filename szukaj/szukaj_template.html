@@ -422,7 +422,7 @@ onmessage = e => {
 const CFG = __CFG__;            // {app, seedKey, razem, targets:[...], defRules, minCyc}
 const MASTER_SEED = '__SEED__';
 const POOLS = __POOLS__;        // {x1x:{seedN,pool:[[typ,STEP,x,TRIG,off,tn,STEP2]...]}, ...}
-const APP_VER = '3.29.3';
+const APP_VER = '3.29.4';
 const SEED_N = MASTER_SEED.length / 3;
 const AL = CFG.alph, TPOS = { x1x: 1, xx1: 2, '1xx': 0 };
 const LSK = { my: CFG.app + '_szukajp_v1_moje_', bands: CFG.app + '_szukajp_v1_bands', imp: CFG.app + '_szukajp_v1_lastimp', found: CFG.app + '_szukajp_v1_found_', rules: CFG.app + '_szukajp_v1_rules', tgt: CFG.app + '_szukajp_v1_tgt', ks: CFG.app + '_szukajp_v1_ks' };
@@ -480,7 +480,7 @@ function myIndex(g) { return P.findIndex(m => specKey(m) === specKey(g.m)); }
 function isMine(k) { return k >= 0 && k < P.length && getMy().some(g => specKey(g.m) === specKey(P[k])); }
 function startMy(k) {
   const r = lastEval.out[k], a = getMy().filter(g => specKey(g.m) !== specKey(P[k]));
-  a.push({ m: P[k].slice(0, 7), id: mid(k, P[k]), start: codes.length, s0: r.bs + 1, t: Date.now() });
+  a.push({ m: P[k].slice(0, 7), id: mid0(k, P[k]), start: codes.length, s0: r.bs + 1, t: Date.now() });
   setMy(a); toast(`Gram ${mid(k, P[k])} od kroku ${r.bs + 1} (${ST[r.bs]} zł) — w MOJE GRY do WIN / BUST`); render();
 }
 // ---- okno STATYSTYKI modelu (dotknięcie karty): statystyki + „Gram ten model” → MOJE GRY ----
@@ -537,7 +537,9 @@ function ruleTxt(m) {
 function openTxt(m, r) {
   return r.st === 1 ? `STEP otwarty — czekam na STEP2 ${m[6]}` : `${m[6] ? 'STEP2 był' : 'STEP otwarty'} — czekam na TRIGGER${TN(m) > 1 ? ` ${r.tc + 1}/${TN(m)}` : ''}`;
 }
-function mid(k, m) { return (k < POOLS[tgt].pool.length ? 'P' : 'N') + (k < POOLS[tgt].pool.length ? k + 1 : k - POOLS[tgt].pool.length + 1); }
+// nazwa na ekranie: numer + cel zakładu (te same numery P… są w każdej puli celu, np. P2508 x1x ≠ P2508 xx1); mid0 = zapisywany identyfikator
+function mid(k, m) { return mid0(k, m) + ' · ' + tgt; }
+function mid0(k, m) { return (k < POOLS[tgt].pool.length ? 'P' : 'N') + (k < POOLS[tgt].pool.length ? k + 1 : k - POOLS[tgt].pool.length + 1); }
 
 // ---- ⇢ RAZEM: model do zakładki SZUKAJ w T50 / T60 RAZEM (wspólna pamięć, klucz <app>razem_v1_szk) ----
 const RZK = CFG.app + 'razem_v1_szk', RZ_SRC = 'SZUKAJ+';
@@ -548,7 +550,7 @@ function rzHas(k) { const s = rzSpec(P[k], tgt); return rzList().some(e => e && 
 function rzToggle(k) {
   const s = rzSpec(P[k], tgt), a = rzList();
   if (rzHas(k)) { lsSet(RZK, JSON.stringify(a.filter(e => !(e && Array.isArray(e.m) && rzSpec(e.m, e.tgt) === s)))); toast(`${mid(k, P[k])} usunięty z ${CFG.razem}`); return; }
-  const orig = mid(k, P[k]);
+  const orig = mid0(k, P[k]);
   a.push({ m: rzNorm(P[k]), tgt, id: `${RZ_SRC === 'SZUKAJ+' ? 'S+' : 'S'}·${CFG.targets.length > 1 ? tgt + '·' : ''}${orig}`, orig, src: RZ_SRC, t: Date.now(), start: codes.length });
   if (lsSet(RZK, JSON.stringify(a))) toast(`${orig} dodany do ${CFG.razem} — zakładka SZUKAJ`); else alert('BŁĄD zapisu pamięci telefonu!');
 }
@@ -986,7 +988,7 @@ function wgHtml(out) {
     const g = act.filter(x => lvl(x) === l).sort((a, b) => (a.d || 99) - (b.d || 99));
     if (!g.length) return;
     h += `<div class="sec wg wg${l}"><div class="sh"><b>${nm}</b><span class="m">${g.length}</span></div>` +
-      g.map(x => head(x) + (x.k >= 0 ? card(x.k, P[x.k], x.r, phaseOf(x.r)) : `<div class="empty">${esc(x.b.id)} — modelu nie ma teraz w puli tej appki</div>`)).join('') + '</div>';
+      g.map(x => head(x) + (x.k >= 0 ? card(x.k, P[x.k], x.r, phaseOf(x.r)) : `<div class="empty">${esc(x.b.id)} · ${tgt} — modelu nie ma teraz w puli tej appki</div>`)).join('') + '</div>';
   });
   if (done.length) h += `<details class="wgd"><summary>Zakończone (${done.length})</summary>` + done.slice(0, 40).map(x => {
     const b = x.b, r = x.r;
@@ -995,7 +997,7 @@ function wgHtml(out) {
       : !r ? `${bet(b)} — model poza pulą`
       : r.le === b.row && r.lt === 2 ? `<span class="neg">✖ BUST na moim zakładzie</span> ${bet(b)}`
       : `✗ ${bet(b)} przegrany, potem ${r.lt === 1 ? '<span class="pos">WIN</span>' : '<span class="neg">BUST</span>'} w w.${(r.le + 1).toLocaleString('pl')} (bez mojego zakładu)`;
-    return `<div class="wgl"><b>${esc(b.id)}</b> · ${t}</div>`; }).join('') + '</details>';
+    return `<div class="wgl"><b>${esc(b.id)} · ${tgt}</b> · ${t}</div>`; }).join('') + '</details>';
   return h;
 }
 function renderGra() {
@@ -1408,13 +1410,13 @@ function betList(spec) {
 const betVal = b => b.res === 'win' ? 2 * b.stake : b.res === 'lost' ? -b.stake : 0;
 const zlTxt = v => `<span class="${v > 0 ? 'pos' : v < 0 ? 'neg' : ''}">${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toLocaleString('pl')}</span>`;
 function addBet(k, row, step, stake) {
-  const a = getBets(); a.push({ m: P[k].slice(0, SPECN), id: mid(k, P[k]), row, step, stake, t: Date.now(), my: 1 }); setBets(a);
+  const a = getBets(); a.push({ m: P[k].slice(0, SPECN), id: mid0(k, P[k]), row, step, stake, t: Date.now(), my: 1 }); setBets(a);
   if (!isMine(k)) addMyQuiet(k);
   toast(`Zapisano zakład ${mid(k, P[k])}: w.${row + 1} · k${step} · ${stake} zł`);
 }
 function addMyQuiet(k) {   // model z zapisanym zakładem → MOJE GRY (bez zmiany ekranu)
   const r = lastEval && lastEval.out[k], a = getMy().filter(g => specKey(g.m) !== specKey(P[k]));
-  a.push({ m: P[k].slice(0, SPECN), id: mid(k, P[k]), start: codes.length, s0: r ? r.bs + 1 : 1, t: Date.now(), auto: 1 }); setMy(a);
+  a.push({ m: P[k].slice(0, SPECN), id: mid0(k, P[k]), start: codes.length, s0: r ? r.bs + 1 : 1, t: Date.now(), auto: 1 }); setMy(a);
 }
 function ensureMyFromBets() {   // zakłady zapisane wcześniej: ich modele raz trafiają do MOJE GRY (usunięcie z MOJE później jest szanowane)
   if (!lastEval) return; let ch = false;
@@ -1467,7 +1469,7 @@ function betsSummary() {   // MOJE: podsumowanie wg modelu i kroku + wszystkie z
     return `<tr class="go" data-bgo="${L[L.length - 1].t}"><td><b>${esc(L[0].id)}</b>${P.some(m => specKey(m) === specKey(L[0].m)) ? '' : ' <span class="mu">(poza pulą)</span>'}</td><td>${cnt(r.n, r.w, r.l, r.c)}</td><td class="ks">${ks}</td><td>${r.put.toLocaleString('pl')}</td><td>${zlTxt(r.wyn)}</td></tr>`;
   }).join('');
   const kr = Object.keys(KS2).sort((a, b) => a - b).map(s => { const z = KS2[s]; return `<tr><td>k${s}</td><td>${cnt(z.n, z.w, 0, 0)}</td><td>${z.put.toLocaleString('pl')}</td><td>${zlTxt(z.wyn)}</td></tr>`; }).join('');
-  const list = all.slice().sort((a, b) => b.row - a.row || b.t - a.t).map(b => `<tr class="go" data-bgo="${b.t}"><td>w.${(b.row + 1).toLocaleString('pl')}<br><span class="mu">${esc(b.id)}</span></td><td class="ks">k${b.step} · ${b.stake} zł</td><td>${b.res === 'win' ? '<span class="pos">✔ WIN</span>' : b.res === 'lost' ? '<span class="neg">✗</span>' : '<span class="mu">⏳</span>'}</td><td>${zlTxt(betVal(b))} ›</td></tr>`).join('');
+  const list = all.slice().sort((a, b) => b.row - a.row || b.t - a.t).map(b => `<tr class="go" data-bgo="${b.t}"><td>w.${(b.row + 1).toLocaleString('pl')}<br><span class="mu">${esc(b.id)} · ${tgt}</span></td><td class="ks">k${b.step} · ${b.stake} zł</td><td>${b.res === 'win' ? '<span class="pos">✔ WIN</span>' : b.res === 'lost' ? '<span class="neg">✗</span>' : '<span class="mu">⏳</span>'}</td><td>${zlTxt(betVal(b))} ›</td></tr>`).join('');
   return `<div class="bsum"><h3>MOJE ZAKŁADY · BET ${tgt} — podsumowanie</h3><table><tr><th>Model</th><th>zakł.</th><th class="ks">kroki</th><th>postawione zł</th><th>wynik zł</th></tr>${rows}
     <tr class="s"><td>Σ</td><td>${cnt(T.n, T.w, T.l, T.c)}</td><td></td><td>${T.put.toLocaleString('pl')}</td><td>${zlTxt(T.wyn)}</td></tr></table>
     <h3 style="margin-top:8px">Według kroku</h3><table><tr><th>krok</th><th>zakł.</th><th>postawione zł</th><th>wynik zł</th></tr>${kr}</table>
@@ -1554,7 +1556,7 @@ function stepSpace() {   // ta sama przestrzeń co szukaj/search.py
 }
 // ---- szukanie modelu po nazwie (P123): ta sama pula z chmury = te same nazwy na każdym urządzeniu ----
 let findQ = '';
-function findModel(q) { const m = /^\s*[pP]?\s*(\d+)\s*$/.exec(q || ''); if (!m) return -1; const k = +m[1] - 1; return k >= 0 && k < POOLS[tgt].pool.length ? k : -2; }
+function findModel(q) { const m = /^\s*[pP]?\s*(\d+)\s*(?:·?\s*(?:x1x|xx1|1xx))?\s*$/i.exec(q || ''); if (!m) return -1; const k = +m[1] - 1; return k >= 0 && k < POOLS[tgt].pool.length ? k : -2; }
 function findHtml() {
   const n = POOLS[tgt].pool.length;
   let h = `<div class="sec"><div class="sh"><b>Znajdź model po nazwie</b><span class="m">BET ${tgt} · P1–P${n}</span></div>
@@ -1659,7 +1661,7 @@ function render() {
     el.querySelectorAll('[data-bw]').forEach(b => b.onclick = () => { bustWin = +b.dataset.bw; bustCap = 40; try { localStorage.setItem(CFG.app + '_szukajp_v1_bwin', String(bustWin)); } catch (e) {} render(); });
     { const bm = $('bustMore'); if (bm) bm.onclick = () => { bustCap += 40; render(); }; }
     el.querySelectorAll('[data-mybx]').forEach(b => b.onclick = e => { e.stopPropagation(); mybHide(b.dataset.mybx); render(); });
-    el.querySelectorAll('.brow').forEach(r => r.onclick = () => { const k = +r.dataset.bk; goBet({ m: P[k].slice(0, SPECN), id: mid(k, P[k]), row: +r.dataset.brow }); });
+    el.querySelectorAll('.brow').forEach(r => r.onclick = () => { const k = +r.dataset.bk; goBet({ m: P[k].slice(0, SPECN), id: mid0(k, P[k]), row: +r.dataset.brow }); });
     el.querySelectorAll('[data-mt]').forEach(b => b.onclick = () => { mojeTab = b.dataset.mt; render(); scrollTo(0, 0); });
     el.querySelectorAll('[data-mine]').forEach(b => b.onclick = () => { onlyMine = !onlyMine; mojeTab = 'gry'; try { localStorage.setItem(CFG.app + '_szukajp_v1_onlymine', onlyMine ? '1' : '0'); } catch (e) {} render(); scrollTo(0, 0); });
     el.querySelectorAll('[data-b]').forEach(b => b.onclick = () => {
