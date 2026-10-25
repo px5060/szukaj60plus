@@ -54,6 +54,8 @@ main{padding:10px 12px 90px;max-width:760px;margin:0 auto}
 .pop .sheet{width:100%;max-width:760px;max-height:88vh;overflow:auto;background:var(--pan);border-top:3px solid var(--or);border-radius:14px 14px 0 0;padding:12px 14px 24px}
 .pop h3{margin:0 0 2px;font-size:18px}.pop .hs{color:var(--mu);font-size:12.5px;margin-bottom:6px}.pop .x{float:right;background:var(--card);border:1px solid var(--bd);color:var(--tx);border-radius:8px;padding:4px 10px;font-size:15px}
 .spnow{background:var(--card);border-radius:8px;padding:6px 9px;font-size:13px;margin:6px 0}
+.spw{display:flex;gap:6px;margin:8px 0 4px}.spw button{flex:1;padding:9px 6px;border-radius:9px;border:1px solid var(--line,#3a4256);background:var(--card);color:inherit;font-weight:700;font-size:14px}.spw button.on{background:#b8902e;border-color:#b8902e;color:#fff}
+.pgz{display:block;width:100%;height:640px;border:0;border-radius:10px;margin:6px 0;background:var(--bg)}
 .flt{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin:0 0 8px}.flt span{color:var(--mu);font-size:12px;width:44px}
 .flt .chip{padding:4px 10px;font-size:12.5px}
 .flt .chip.mine{border-color:var(--or);color:var(--or2)}.flt .chip.mine.on{background:var(--or);color:#fff}
@@ -424,7 +426,7 @@ onmessage = e => {
 const CFG = __CFG__;            // {app, seedKey, razem, targets:[...], defRules, minCyc}
 const MASTER_SEED = '__SEED__';
 const POOLS = __POOLS__;        // {x1x:{seedN,pool:[[typ,STEP,x,TRIG,off,tn,STEP2]...]}, ...}
-const APP_VER = '3.29.8';
+const APP_VER = '3.30.0';
 const SEED_N = MASTER_SEED.length / 3;
 const AL = CFG.alph, TPOS = { x1x: 1, xx1: 2, '1xx': 0 };
 const LSK = { my: CFG.app + '_szukajp_v1_moje_', bands: CFG.app + '_szukajp_v1_bands', imp: CFG.app + '_szukajp_v1_lastimp', found: CFG.app + '_szukajp_v1_found_', rules: CFG.app + '_szukajp_v1_rules', tgt: CFG.app + '_szukajp_v1_tgt', ks: CFG.app + '_szukajp_v1_ks' };
@@ -498,6 +500,25 @@ function startMy(k) {
 let statK = null;
 function openStats(k) { statK = k; if (selK !== k) { selK = k; tabN = 150; tabScroll = true; hlBet = -1; liveOn = false; } needLabels(); renderSheet(); }
 function closeStats() { statK = null; const o = $('statPop'); if (o) o.remove(); }
+let spWid = 's';   // okno modelu: 's' statystyki, 'z' zeszyt (bieżąca gra na kartach ZESZYTU)
+function znaczZeszyt() {   // bieżąca gra modelu → ?znacz= dla ZESZYTU (Nr = indeks + 1): STEP s, TRIGGER t, krok bez trafienia k, WIN w, BUST b, zakład do gry n
+  const n = codes.length, K = lab.K, A = lab.A, B = lab.B, kon = i => K[i] === 6 || K[i] === 8, czy = i => K[i] && K[i] !== 9;
+  let e = n - 1; while (e >= 0 && !kon(e)) e--;
+  let od = e + 1, ko = n - 1;
+  if (!Array.from({ length: n - od }, (_, j) => od + j).some(czy) && e >= 0) { ko = e; od = e - 1; while (od >= 0 && !kon(od)) od--; od++; }   // po WIN / BUST jeszcze nic — ostatnia gra
+  const z = [];
+  for (let i = od; i <= ko; i++) {
+    const k = K[i];
+    if (k === 3 || k === 10) z.push(`${i + 1}:s`);   // STEP spełniony (bez częściowych serii)
+    else if (k === 4 || k === 12) z.push(`${i + 1}:t`);
+    else if (k === 7) z.push(`${i + 1}:k:${A[i]}`);
+    else if (k === 6) z.push(`${i + 1}:w:${A[i]}`);
+    else if (k === 8) z.push(`${i + 1}:b:8`);
+  }
+  if (ko === n - 1 && n && (K[n - 1] === 4 || K[n - 1] === 5)) z.push(`${B[n - 1] + 1}:n:${A[n - 1]}`);
+  return z.slice(-80).join(',');
+}
+window.addEventListener('message', e => { const h = e.data && e.data.zeszytH; if (h) document.querySelectorAll('iframe.pgz').forEach(f => { if (f.contentWindow === e.source) f.style.height = Math.max(200, h) + 'px'; }); });
 function renderSheet() {
   if (statK === null) return;
   let o = $('statPop');
@@ -511,10 +532,12 @@ function renderSheet() {
     ${!r ? '' : mine
       ? `<button class="btn playing" id="spStop">${res ? (res.win ? '✔ WIN' : '✖ BUST') + ` — gra zakończona (${res.pnl >= 0 ? '+' : ''}${res.pnl} zł). Usuń z MOJE GRY` : `■ W MOJE GRY od w.${g.start + 1} (wejście k${g.s0}) — przestań śledzić`}</button>`
       : `<button class="btn play" id="spPlay">▶ Gram ten model — dodaj do MOJE GRY (teraz krok ${r.bs + 1}, ${ST[r.bs]} zł)</button><div class="hint" style="margin-top:4px">Model trafi do aplikacji <b>MOJE</b> — tam go śledzisz, zapisujesz zakłady i widzisz LOST-y.</div>`}
-    ${ready ? statsHtml(r) : '<div class="hint" style="margin-top:10px">Liczę statystyki…</div>'}
+    <div class="spw"><button id="spWs" class="${spWid === 's' ? 'on' : ''}">📊 Statystyki</button><button id="spWz" class="${spWid === 'z' ? 'on' : ''}">📓 Zeszyt — bieżąca gra</button></div>
+    ${!ready ? '<div class="hint" style="margin-top:10px">Liczę statystyki…</div>' : spWid === 'z' ? `<div class="hint">STEP, TRIGGER i zakład do gry na kartach ZESZYTU, z nazwami meczów. ◀ ▶ — inne karty.</div><iframe class="pgz" src="/zeszyt/${CFG.app === 't60' ? 't60.html' : ''}?znacz=${znaczZeszyt()}" title="bieżąca gra na zeszycie"></iframe>` : statsHtml(r)}
     ${r ? rzBtn(k) : ''}
     <button class="btn more" id="spTab" style="margin-top:10px">Otwórz TABELĘ tego modelu</button><button class="btn more" id="spClose" style="margin-top:6px">✕ Zamknij</button></div>`;
   $('spX').onclick = closeStats; $('spClose').onclick = closeStats;
+  $('spWs').onclick = () => { spWid = 's'; renderSheet(); }; $('spWz').onclick = () => { spWid = 'z'; renderSheet(); };
   $('spTab').onclick = () => { closeStats(); openTab(k); };
   const bsv = $('btSave'); if (bsv) bsv.onclick = () => { const nr = +$('btNr').value, kk = +$('btK').value, zl = +$('btZl').value;
     if (!(nr >= 1) || !(kk >= 1 && kk <= 8) || !(zl > 0)) { $('btHd').textContent = 'Podaj Nr wiersza, krok 1–8 i kwotę w zł'; return; } addBet(k, nr - 1, kk, zl); renderSheet(); };
