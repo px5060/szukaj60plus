@@ -71,3 +71,7 @@ Zapisuje reguły i ustalenia z rozmów, żeby przetrwały streszczenie (kompakcj
 - Plik `szukaj-sw.js` jest w repo (już nie generuje go `build_szukaj.py`); kopia na plik bez `?nocache=`.
 - Ten sam wzór co ZESZYT i MOJE.
 - Po starcie zielony komunikat na 3,5 s: „✓ Pobrane — działa też bez internetu”, a bez sieci „📴 Bez internetu — działa z pamięci telefonu”.
+
+## Okno modelu: 📊 Statystyki ⇄ 📓 Zeszyt (3.30.0)
+- Dwa przyciski pod „Teraz”: Statystyki albo Zeszyt — bieżąca gra na kartach ZESZYTU (ramka `/zeszyt/…?znacz=`) z nazwami meczów.
+- Bieżąca gra = od ostatniego WIN / BUST: STEP spełniony, TRIGGER, przegrane kroki (k1, k2…), zakład do gry (▶ krok, stawka). Gdy po WIN / BUST jeszcze nic — ostatnia gra.
