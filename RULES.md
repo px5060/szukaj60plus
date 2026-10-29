@@ -75,3 +75,6 @@ Zapisuje reguły i ustalenia z rozmów, żeby przetrwały streszczenie (kompakcj
 ## Okno modelu: 📊 Statystyki ⇄ 📓 Zeszyt (3.30.0)
 - Dwa przyciski pod „Teraz”: Statystyki albo Zeszyt — bieżąca gra na kartach ZESZYTU (ramka `/zeszyt/…?znacz=`) z nazwami meczów.
 - Bieżąca gra = od ostatniego WIN / BUST: STEP spełniony, TRIGGER, przegrane kroki (k1, k2…), zakład do gry (▶ krok, stawka). Gdy po WIN / BUST jeszcze nic — ostatnia gra.
+
+## Kwadraciki ostatnich cykli w statystykach
+- 1. dotknięcie powiększa, 2. pokazuje, co było po takim wyniku: ile razy W1, W2… i BUST/LOST w następnym cyklu (z całej historii modelu) i kolejno ostatnie — jak w ZESZYCIE.
