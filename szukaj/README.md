@@ -30,3 +30,5 @@ python3 build_szukaj.py t50          # T60: python3 build_szukaj.py t60   → ..
 i zapisuje pulę warstwową: najlepsze wg BUST/cykl w przedziałach 401+ / 100–200 / 201–300 / 301–400 cykli.
 Kolejne uruchomienia z innym ziarnem i `--dolacz` dokładają modele do istniejącej puli:
 `python3 search.py t50 x1x 6000000 21 --dolacz`.
+
+**Odświeżanie co 100 nowych kodów (stałe numery P):** `dopisane.txt` = kody z telefonu po bazie (`all50/analiza/narzedzia/pule.py --przygotuj`), potem `python3 search.py t60 …` i `build_szukaj.py t60`. SZUKAJ+ zawsze zaczyna od starej puli, więc P1… zostają, a nowe modele dostają kolejne numery. `build_szukaj.py` dopuszcza pulę liczoną do końca `dopisane.txt`; baza `seed_*.txt` zostaje = MASTER_SEED RAZEM (kody z telefonu są zapisane względem niej).
