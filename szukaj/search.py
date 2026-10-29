@@ -57,7 +57,9 @@ def main():
     ser_all = np.array([t == 'SERIA' for t, _ in step])
     # pula startowa: stare modele SZUKAJ (STEP → TRIGGER) → format 7 pól
     old = HERE / f'pool_{name}_{target}.json'
-    pool = [m + [1, ''] if len(m) == 5 else m for m in json.loads(old.read_text())['pool']] if old.exists() else []
+    od = json.loads(old.read_text()) if old.exists() else {}
+    pool = [m + [1, ''] if len(m) == 5 else m for m in od.get('pool', [])]
+    nr0, n0 = od.get('nr') or list(range(1, len(pool) + 1)), len(pool)   # numery P starej puli (po przycięciu z dziurami)
     seen = {json.dumps(m, ensure_ascii=False) for m in pool}
     for tn, use2 in FAMILIES:
         a = rng.integers(0, len(step), n); b = rng.integers(0, len(trig), n); off = rng.integers(1, 8, n)
@@ -84,7 +86,9 @@ def main():
                 if j not in seen:
                     seen.add(j); pool.append(m); added += 1
         print('   dodano', added, flush=True)
-    json.dump({'name': name, 'target': target, 'seedN': len(codes), 'rules': RULES, 'minCyc': MIN_CYC, 'pool': pool},
+    top = max(nr0, default=0); nowe = len(pool) - n0   # stałe numery: stare bez zmian, nowe dostają kolejne; przed — do komunikatu w appce
+    extra = {'nr': nr0 + list(range(top + 1, top + 1 + nowe)), 'przed': {'n': n0, 'max': top, 'seedN': od.get('seedN')}}
+    json.dump({'name': name, 'target': target, 'seedN': len(codes), 'rules': RULES, 'minCyc': MIN_CYC, **extra, 'pool': pool},
               open(HERE / f'pool_{name}_{target}.json', 'w'), ensure_ascii=False, separators=(',', ':'))
     print('   pula zapisana:', len(pool))
 
